@@ -422,10 +422,12 @@ body.panel-active #vignette{display:none !important;}
   background:rgba(5,8,20,0.97);
   border-bottom:2px solid rgba(255,255,255,0.15);
   padding:14px 24px;
-  display:none;
+  display:block;
+  opacity:0;
+  pointer-events:none;
   box-shadow:0 4px 20px rgba(0,0,0,0.5);
 }
-#search-bar.show{opacity:1;}
+#search-bar.show{opacity:1;pointer-events:all;}
 .sb-track{height:5px;background:rgba(255,255,255,0.1);border-radius:3px;margin-bottom:10px;}
 .sb-fill{height:5px;background:linear-gradient(90deg,#4a9abe,#6abcde,#b8956a);border-radius:3px;width:0%;transition:width 0.8s ease;box-shadow:0 0 8px rgba(100,180,220,0.6);}
 #sb-text{font-family:'Share Tech Mono',monospace;font-size:13px;letter-spacing:2px;color:#ffffff;text-align:center;text-shadow:0 1px 4px rgba(0,0,0,0.8);}
