@@ -1,0 +1,2610 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0a0e1a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<script>
+// Keep screen awake
+var wakeLock = null;
+async function requestWakeLock(){
+  try{ if('wakeLock' in navigator){ wakeLock = await navigator.wakeLock.request('screen'); } }catch(e){}
+}
+window.addEventListener('load', requestWakeLock);
+document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible') requestWakeLock(); });
+</script>
+<title>Mystery Airlines</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=IM+Fell+English:ital@0;1&family=Share+Tech+Mono&family=Inter:wght@400;500;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}html{height:100%;overflow:hidden;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);}
+body{background:#1a1a2e;font-family:'IM Fell English',serif;overflow:hidden;height:100vh;height:100dvh;margin:0;padding:0;padding-top:env(safe-area-inset-top);}
+#map{width:100vw;height:100%;z-index:1;position:fixed;top:0;left:0;right:0;bottom:0;}
+.leaflet-tile{filter:brightness(0.88) saturate(0.85);}
+#vignette{position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,0.5) 100%);z-index:2;pointer-events:none;}
+
+/* INTRO */
+#intro{
+  position:fixed;inset:0;z-index:2000;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:0;transition:opacity 1.5s;overflow:hidden;
+}
+#intro-canvas{position:absolute;inset:0;z-index:0;}
+#intro-content{
+  position:relative;z-index:1;
+  display:flex;flex-direction:column;align-items:center;
+  gap:20px;padding:32px;text-align:center;
+  max-width:600px;width:100%;
+}
+.intro-eyebrow{
+  font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:6px;
+  color:rgba(255,255,255,0.6);text-transform:uppercase;
+  animation:fadeUp 1s 0.3s both;
+}
+#intro h1{
+  font-family:'Inter',sans-serif;
+  font-size:clamp(40px,10vw,88px);
+  font-weight:700;font-style:normal;
+  color:#ffffff;letter-spacing:-1px;line-height:1.05;
+  text-shadow:0 0 60px rgba(184,149,106,0.4),0 4px 30px rgba(0,0,0,0.8);
+  animation:fadeUp 1s 0.5s both;
+}
+#intro h1 span{color:#b8956a;}
+.intro-tagline{
+  font-family:'Inter',sans-serif;font-style:normal;
+  font-size:clamp(16px,3vw,20px);color:rgba(255,255,255,0.85);
+  line-height:1.6;max-width:400px;
+  animation:fadeUp 1s 0.8s both;
+}
+.intro-divider{
+  width:60px;height:1px;background:rgba(184,149,106,0.4);
+  animation:fadeUp 1s 1s both;
+}
+.intro-btn{
+  background:rgba(184,149,106,0.1);
+  border:1.5px solid rgba(184,149,106,0.6);
+  color:#ffffff;
+  font-family:'Share Tech Mono',monospace;font-size:13px;letter-spacing:5px;
+  padding:16px 48px;cursor:pointer;text-transform:uppercase;
+  transition:all 0.4s;border-radius:2px;
+  animation:fadeUp 1s 1.2s both;
+  backdrop-filter:blur(10px);
+}
+.intro-btn:hover{
+  background:rgba(184,149,106,0.2);
+  border-color:#b8956a;
+  box-shadow:0 0 40px rgba(184,149,106,0.3);
+  letter-spacing:7px;
+}
+.intro-plane{
+  font-size:32px;opacity:0.8;
+  animation:planeFly 4s ease-in-out infinite, fadeUp 1s 1.4s both;
+}
+@keyframes planeFly{0%,100%{transform:translateX(-8px) rotate(-5deg)}50%{transform:translateX(8px) rotate(5deg)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+
+/* INSTRUCTIONS */
+#instructions{position:fixed;inset:0;background:rgba(5,8,20,0.97);z-index:3000;display:flex;align-items:center;justify-content:center;display:none;}
+#instructions.show{display:flex;opacity:1;animation:slideInLeft 0.4s cubic-bezier(0.34,1.2,0.64,1);}
+.instr-card{
+  background:#08090f;
+  border:1px solid rgba(184,149,106,0.2);
+  border-radius:4px;
+  max-width:560px;width:94vw;
+  max-height:92vh;
+  display:flex;flex-direction:column;
+  overflow:hidden;
+  box-shadow:0 0 80px rgba(0,0,0,0.95), 0 0 40px rgba(184,149,106,0.08);
+  animation:instrAppear 0.8s ease forwards;
+}
+@keyframes instrAppear{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
+.instr-header{
+  padding:20px 24px 16px;
+  border-bottom:1px solid rgba(184,149,106,0.15);
+  position:relative;
+  overflow:hidden;
+  flex-shrink:0;
+}
+.instr-header::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(184,149,106,0.06) 0%,transparent 60%);
+  pointer-events:none;
+}
+.instr-eyebrow{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:4px;color:rgba(255,255,255,0.6);text-transform:uppercase;margin-bottom:8px;}
+.instr-header h2{font-family:'Inter',sans-serif;color:#ffffff;font-size:clamp(20px,4vw,32px);font-weight:700;letter-spacing:-0.5px;line-height:1.15;margin-bottom:6px;}
+.instr-header h2 em{color:#f0c060;font-style:normal;}
+.instr-header-sub{font-family:'Inter',sans-serif;font-size:clamp(13px,2vw,16px);color:rgba(255,255,255,0.7);letter-spacing:0;}
+.instr-body{padding:16px 24px;overflow-y:auto;flex:1;}
+.instr-rule{display:flex;gap:16px;margin-bottom:16px;align-items:flex-start;opacity:0;animation:ruleIn 0.5s ease forwards;}
+.instr-rule:nth-child(1){animation-delay:0.3s}
+.instr-rule:nth-child(2){animation-delay:0.5s}
+.instr-rule:nth-child(3){animation-delay:0.7s}
+@keyframes ruleIn{from{transform:translateX(-20px);opacity:0}to{transform:translateX(0);opacity:1}}
+.instr-num{
+  width:30px;height:30px;border-radius:50%;
+  border:2px solid rgba(220,160,60,0.7);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Share Tech Mono',monospace;font-size:13px;color:#f0c060;
+  flex-shrink:0;margin-top:2px;
+}
+.instr-text{font-family:'Inter',sans-serif;font-size:clamp(14px,2.5vw,17px);color:#ffffff;line-height:1.6;}
+.instr-text strong{color:#f0c060;font-weight:600;}
+.instr-divider{border:none;border-top:1px solid rgba(184,149,106,0.1);margin:4px 0 16px;}
+.instr-warning{
+  background:rgba(184,149,106,0.05);
+  border:1px solid rgba(184,149,106,0.2);
+  border-radius:3px;padding:12px 16px;margin-bottom:16px;
+  display:flex;gap:10px;align-items:flex-start;
+  opacity:0;animation:ruleIn 0.5s 0.9s ease forwards;
+}
+.instr-warn-icon{font-size:14px;flex-shrink:0;margin-top:2px;}
+.instr-warning p{font-family:'Inter',sans-serif;font-size:clamp(13px,2.5vw,15px);color:#ffffff;letter-spacing:0;line-height:1.5;}
+.instr-footer{padding:12px 24px 20px;display:flex;justify-content:center;opacity:0;animation:ruleIn 0.5s 1.1s ease forwards;flex-shrink:0;border-top:1px solid rgba(184,149,106,0.1);}
+#instr-start{
+  background:rgba(184,149,106,0.15);
+  border:2px solid rgba(220,160,60,0.8);
+  border-radius:3px;color:#f0c060;
+  cursor:pointer;font-family:'Share Tech Mono',monospace;
+  font-size:clamp(11px,2vw,13px);letter-spacing:4px;padding:14px 36px;
+  text-transform:uppercase;transition:all 0.4s;
+  position:relative;overflow:hidden;width:100%;
+}
+#instr-start::before{content:'';position:absolute;inset:0;background:rgba(184,149,106,0);transition:background 0.4s;}
+#instr-start:hover::before{background:rgba(184,149,106,0.08);}
+#instr-start:hover{border-color:#b8956a;box-shadow:0 0 30px rgba(184,149,106,0.2);letter-spacing:6px;}
+
+/* PINS */
+.custom-pin{width:11px;height:11px;background:#e8956a;border:2px solid white;border-radius:50%;animation:ppulse 1.5s ease-in-out infinite;}
+@keyframes ppulse{0%,100%{box-shadow:0 0 8px rgba(232,149,106,0.6)}50%{box-shadow:0 0 20px rgba(232,149,106,1),0 0 36px rgba(232,149,106,0.4)}}
+.bali-pin{width:18px;height:18px;background:#4aeb8a;border:2px solid white;border-radius:50%;animation:bpulse 1s ease-in-out infinite;}
+@keyframes bpulse{0%,100%{transform:scale(1);box-shadow:0 0 16px rgba(74,235,138,0.8)}50%{transform:scale(1.2);box-shadow:0 0 36px rgba(74,235,138,1),0 0 60px rgba(74,235,138,0.5)}}
+.plane-icon{font-size:26px;transition:transform 0.3s linear;filter:drop-shadow(0 0 8px rgba(255,200,50,0.9)) drop-shadow(0 2px 6px rgba(0,0,0,0.8));display:block;}
+
+/* GAME PANEL */
+#game-panel{-webkit-backface-visibility:hidden;backface-visibility:hidden;position:fixed;inset:0;z-index:1500;display:none;width:100%;max-width:100%;background:#0a0e1a;overflow-y:auto;flex-direction:column;align-items:center;justify-content:flex-start;padding:0;}
+#game-panel.show{display:flex;animation:slideInBottom 0.5s cubic-bezier(0.34,1.2,0.64,1);}
+#boarding-pass{background:#f5f0e8;border-radius:14px;overflow:hidden;box-shadow:0 0 50px rgba(0,0,0,0.7);width:100%;max-width:640px;margin:20px auto;}
+.bp-header{background:linear-gradient(135deg,#0d1117,#1a1535);padding:14px 22px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #b8956a;}
+.bp-airline{color:#b8956a;font-family:'Playfair Display',serif;font-size:22px;font-weight:700;letter-spacing:4px;}
+.bp-flightno{color:#6a5a30;font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:2px;}
+.bp-body{padding:16px 22px 12px;display:grid;grid-template-columns:1fr 220px;gap:18px;color:#1a1410;}
+@media(max-width:600px){.bp-body{grid-template-columns:1fr;}}
+.bp-left{}
+.bp-route{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.bp-field{display:flex;flex-direction:column;}
+.bp-label{font-size:11px;letter-spacing:3px;color:#3a2a10;text-transform:uppercase;margin-bottom:3px;font-family:'Share Tech Mono',monospace;}
+.bp-value{font-size:18px;font-weight:700;color:#1a1410 !important;letter-spacing:2px;font-family:'Share Tech Mono',monospace;}
+.bp-value.unknown{color:#b8956a;font-size:14px;}
+.bp-perf{display:flex;align-items:center;margin:8px -22px;}
+.bp-perf-c{width:18px;height:18px;border-radius:50%;background:#1a1a2e;flex-shrink:0;}
+.bp-perf-l{flex:1;border-top:2px dashed #c8b898;}
+.bp-baro-label{font-size:12px;color:#3a2a10;letter-spacing:3px;color:#9a8a6a;text-transform:uppercase;margin-bottom:6px;font-family:'Share Tech Mono',monospace;display:flex;justify-content:space-between;}
+#km-display{color:#1a1410 !important;font-weight:900;font-size:14px;}
+.bp-baro-track{height:32px;background:#e0d8c8;border-radius:6px;overflow:visible;position:relative;border:1px solid #c8b898;margin-bottom:4px;}
+.bp-baro-fill{height:100%;background:linear-gradient(90deg,#8a6a40,#b8956a,#d4b96a);border-radius:6px;width:0%;transition:width 1.2s cubic-bezier(0.34,1.56,0.64,1);position:relative;}
+.bp-baro-fill::after{content:'✈';position:absolute;right:-16px;top:50%;transform:translateY(-50%);font-size:22px;filter:drop-shadow(0 1px 4px rgba(0,0,0,0.5));}
+#baro-zone{font-family:'Share Tech Mono',monospace;font-size:13px;color:#2a1a00;letter-spacing:1px;height:13px;margin-bottom:8px;}
+.bp-input-section{}
+.bp-input-status{font-family:'Share Tech Mono',monospace;font-size:13px;color:#2a1a00;letter-spacing:2px;margin-bottom:6px;height:12px;}
+.bp-input-row{display:flex;gap:8px;align-items:center;}
+#word-input{flex:1;background:#ffffff !important;border:1.5px solid #c8b898;border-radius:4px;color:#1a1410 !important;font-family:'Share Tech Mono',monospace;font-size:16px;letter-spacing:1px;padding:12px 14px;text-transform:uppercase;outline:none;transition:all 0.3s;}
+#word-input:focus{border-color:#b8956a;box-shadow:0 0 10px rgba(184,149,106,0.25);}
+#word-input.wrong{border-color:#c84a4a;animation:shake 0.3s;}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+#word-input.correct{border-color:#4a8a4a;background:#f0fff0;}
+#word-submit{background:linear-gradient(135deg,#1a1a2e,#2a2040);border:none;border-radius:4px;color:#b8956a;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:13px;letter-spacing:3px;padding:13px 18px;text-transform:uppercase;transition:all 0.3s;white-space:nowrap;}
+#word-submit:hover{background:linear-gradient(135deg,#2a2040,#3a3060);}
+#word-submit:disabled{opacity:0.4;cursor:not-allowed;}
+#win-msg{height:18px;margin-top:6px;text-align:center;min-height:18px;}
+#win-text{font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;opacity:0;transition:opacity 0.4s;}
+#win-text.show{opacity:1;}
+.bp-used-words{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;min-height:22px;}
+.bp-used-chip{background:#1a2a1a;border:1px solid #4a7a4a;border-radius:3px;padding:5px 10px;font-family:'Share Tech Mono',monospace;font-size:11px;color:#7acf7a !important;letter-spacing:1px;}
+#launch-btn{display:none;background:linear-gradient(135deg,#1a3a1a,#2a5040);border:none;border-radius:4px;color:#4aeb8a;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:13px;letter-spacing:3px;padding:14px;text-transform:uppercase;transition:all 0.3s;width:100%;margin-top:8px;box-shadow:0 0 20px rgba(74,235,138,0.2);}
+#launch-btn:hover{box-shadow:0 0 30px rgba(74,235,138,0.4);}
+.bp-right{display:flex;flex-direction:column;}
+.bp-dest-title{font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:3px;color:#3a2a10;text-transform:uppercase;margin-bottom:8px;font-weight:700;}
+#world-map-svg{width:100%;height:auto;border-radius:6px;background:#0d1520;border:1.5px solid #8a7a5a;box-shadow:inset 0 0 20px rgba(0,0,0,0.5);}
+.map-region{fill:#3a4a6a;stroke:#5a6a8a;stroke-width:0.8;transition:fill 0.8s ease, filter 0.8s ease;cursor:default;}
+.map-region.unlocked{fill:#2a6a3a;stroke:#4aaa5a;stroke-width:1;filter:drop-shadow(0 0 5px rgba(74,200,74,0.7));}
+.map-region.current{fill:#3a8a4a;stroke:#6ada6a;stroke-width:1.5;filter:drop-shadow(0 0 10px rgba(74,235,74,1));}
+.map-region.all-unlocked{fill:#2a9a5a;stroke:#5adf8a;stroke-width:1.5;filter:drop-shadow(0 0 12px rgba(74,235,138,1));}
+#map-zone-label{font-family:'Share Tech Mono',monospace;font-size:11px;color:#6a5a40;letter-spacing:1px;text-align:center;margin-top:6px;height:16px;transition:color 0.3s;}
+#map-zone-label.lit{color:#4aeb6a;}
+.bp-barcode{display:flex;justify-content:center;gap:1px;padding:8px 0 4px;grid-column:1/-1;}
+
+/* Android color fixes - explicit overrides */
+#boarding-pass *:not(.bp-used-chip):not(#launch-btn):not(#word-submit):not(.bp-perf-c) {
+  color: #1a1410;
+}
+#boarding-pass .bp-header * { color: inherit; }
+.bp-header .bp-airline { color: #b8956a !important; }
+.bp-header .bp-flightno { color: #6a5a30 !important; }
+#boarding-pass .bp-used-chip { color: #7acf7a !important; }
+#boarding-pass #launch-btn { color: #4aeb8a !important; }
+#boarding-pass #word-submit { color: #b8956a !important; }
+#dest-display { color: #b8956a !important; }
+#dest-display.unlocked-dest { color: #4a8a4a !important; }
+#baro-zone { color: #4a3020 !important; }
+#map-zone-label { color: #6a5040 !important; }
+#map-zone-label.lit { color: #4aeb6a !important; }
+#win-text { font-size: 13px !important; }
+.bp-bar{background:#1a1410;width:2px;border-radius:1px;}
+
+/* ROULETTE OVERLAY */
+#roulette-overlay{position:fixed;inset:0;background:rgba(5,8,20,0.96);z-index:3000;display:flex;flex-direction:column;align-items:center;justify-content:center;display:none;gap:20px;}
+#roulette-overlay.show{display:flex;opacity:1;animation:slideInTop 0.5s cubic-bezier(0.34,1.2,0.64,1);}
+.rl-title{font-family:'Inter',sans-serif;font-size:clamp(18px,3vw,26px);font-weight:700;color:#ffffff;letter-spacing:0;text-align:center;}
+.rl-sub{font-family:'Inter',sans-serif;font-size:18px;color:rgba(255,255,255,0.85);text-align:center;}
+#roulette-wrap{position:relative;width:440px;height:440px;}
+#roulette-canvas{border-radius:50%;box-shadow:0 0 40px rgba(184,149,106,0.3);}
+.rl-needle{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:36px;z-index:10;color:#f0c060;text-shadow:0 0 8px rgba(240,192,96,0.8),0 2px 4px rgba(0,0,0,0.9);line-height:1;}
+.rl-center{display:none;}
+#spin-btn{background:linear-gradient(135deg,#b8956a,#8a6a40);border:none;border-radius:6px;color:#0a0e1a;cursor:pointer;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;letter-spacing:2px;padding:14px 40px;text-transform:uppercase;transition:all 0.3s;box-shadow:0 4px 20px rgba(184,149,106,0.4);}
+#spin-btn:hover{transform:translateY(-2px);box-shadow:0 6px 28px rgba(184,149,106,0.6);}
+#spin-btn:disabled{opacity:0.4;cursor:not-allowed;transform:none;}
+#spin-result{font-family:'Share Tech Mono',monospace;font-size:13px;letter-spacing:3px;height:20px;text-align:center;transition:opacity 0.5s;}
+
+/* MYSTERY DESTINATION MODAL */
+#mystery-modal{
+  position:fixed;inset:0;z-index:4500;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,0.92);backdrop-filter:blur(10px);
+  display:none;transition:opacity 0.6s;
+}
+#mystery-modal.show{display:flex;opacity:1;animation:scaleIn 0.5s cubic-bezier(0.34,1.56,0.64,1);}
+#mystery-modal-card{
+  background:linear-gradient(160deg,#0d1124,#0a0e1a);
+  border:1px solid rgba(184,149,106,0.5);
+  border-radius:12px;padding:48px 44px;text-align:center;
+  max-width:480px;width:90vw;position:relative;overflow:hidden;
+  box-shadow:0 0 80px rgba(184,149,106,0.2),0 0 200px rgba(184,149,106,0.06);
+  animation:mysteryPop 0.6s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+@keyframes mysteryPop{from{transform:scale(0.7) translateY(30px);opacity:0;}to{transform:scale(1) translateY(0);opacity:1;}}
+#mystery-modal-card::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 0%,rgba(184,149,106,0.12),transparent 70%);
+  pointer-events:none;
+}
+.myst-eyebrow{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:5px;color:rgba(184,149,106,0.7);text-transform:uppercase;margin-bottom:20px;}
+.myst-icon{font-size:52px;margin-bottom:16px;animation:mystFloat 3s ease-in-out infinite;}
+@keyframes mystFloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
+.myst-title{font-family:'Inter',sans-serif;font-size:clamp(22px,5vw,30px);font-weight:700;color:#b8956a;letter-spacing:-0.5px;margin-bottom:20px;}
+.myst-text{font-family:'Inter',sans-serif;font-size:15px;color:rgba(255,255,255,0.8);line-height:1.7;margin-bottom:32px;}
+.myst-text strong{color:#ffffff;}
+#mystery-continue-btn{background:linear-gradient(135deg,#b8956a,#8a6a40);border:none;border-radius:6px;color:#0a0e1a;cursor:pointer;font-family:'Inter',sans-serif;font-size:13px;font-weight:700;letter-spacing:2px;padding:14px 36px;text-transform:uppercase;transition:all 0.3s;box-shadow:0 4px 20px rgba(184,149,106,0.4);}
+#mystery-continue-btn:hover{transform:translateY(-2px);box-shadow:0 6px 28px rgba(184,149,106,0.6);}
+#fireworks-canvas{position:absolute;inset:0;pointer-events:none;z-index:1;}
+
+#ignore-modal-2, #ignore-modal-3, #ignore-modal-4, #ignore-modal-5{
+  position:fixed;inset:0;z-index:9000;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,0.88);backdrop-filter:blur(8px);
+  display:none;transition:opacity 0.4s;
+}
+#ignore-modal-2.show, #ignore-modal-3.show, #ignore-modal-4.show, #ignore-modal-5.show{display:flex;opacity:1;animation:slideInRight 0.4s cubic-bezier(0.34,1.2,0.64,1);}
+#ignore-modal-card-2, #ignore-modal-card-3{
+  background:#0a0e1a;border:1px solid rgba(200,70,70,0.5);
+  border-radius:10px;padding:40px 44px;text-align:center;
+  max-width:420px;width:90vw;
+  box-shadow:0 0 60px rgba(200,70,70,0.15);
+  animation:mysteryPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+#ignore-close-btn-2, #ignore-close-btn-3, #ignore-close-btn-4, #ignore-close-btn-5{background:rgba(200,70,70,0.2);border:1px solid rgba(200,70,70,0.5);border-radius:6px;color:#c84a4a;cursor:pointer;font-family:'Inter',sans-serif;font-size:12px;font-weight:700;letter-spacing:2px;padding:12px 32px;text-transform:uppercase;transition:all 0.3s;}
+#ignore-close-btn-2:hover, #ignore-close-btn-3:hover, #ignore-close-btn-4:hover, #ignore-close-btn-5:hover{background:rgba(200,70,70,0.3);}
+.skip-announce-btn{background:transparent;border:1px solid rgba(255,255,255,0.4);border-radius:4px;color:rgba(255,255,255,0.8);cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:3px;padding:10px 28px;text-transform:uppercase;transition:all 0.3s;margin-top:8px;animation:skipPulse 2s ease-in-out infinite;}
+.skip-announce-btn:hover{border-color:#ffffff;color:#ffffff;background:rgba(255,255,255,0.08);}
+
+body.panel-active #map{display:none !important;}
+body.panel-active #vignette{display:none !important;}
+@keyframes skipPulse{0%,100%{opacity:0.6;border-color:rgba(255,255,255,0.3);}50%{opacity:1;border-color:rgba(255,255,255,0.8);}}
+
+/* IGNORE CREW FUNNY MODAL */
+#ignore-modal{
+  position:fixed;inset:0;z-index:9000;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,0.88);backdrop-filter:blur(8px);
+  display:none;transition:opacity 0.4s;
+}
+#ignore-modal.show{display:flex;opacity:1;animation:slideInRight 0.4s cubic-bezier(0.34,1.2,0.64,1);}
+#ignore-modal-card{
+  background:#0a0e1a;border:1px solid rgba(200,70,70,0.5);
+  border-radius:10px;padding:40px 44px;text-align:center;
+  max-width:420px;width:90vw;
+  box-shadow:0 0 60px rgba(200,70,70,0.15);
+  animation:mysteryPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.ignore-icon{font-size:56px;margin-bottom:16px;}
+.ignore-title{font-family:'Inter',sans-serif;font-size:20px;font-weight:700;color:#c84a4a;margin-bottom:16px;}
+.ignore-text{font-family:'Inter',sans-serif;font-size:14px;color:rgba(255,255,255,0.75);line-height:1.7;margin-bottom:28px;}
+#ignore-close-btn{background:rgba(200,70,70,0.2);border:1px solid rgba(200,70,70,0.5);border-radius:6px;color:#c84a4a;cursor:pointer;font-family:'Inter',sans-serif;font-size:12px;font-weight:700;letter-spacing:2px;padding:12px 32px;text-transform:uppercase;transition:all 0.3s;}
+#ignore-close-btn:hover{background:rgba(200,70,70,0.3);}
+
+
+/* CUSTOM KEYBOARD */
+#custom-keyboard{
+  display:none;
+  flex-direction:column;
+  gap:6px;
+  padding:10px 8px;
+  background:rgba(10,14,26,0.98);
+  border-top:1px solid rgba(184,149,106,0.2);
+  position:fixed;
+  bottom:0;left:0;right:0;
+  z-index:4000;
+  box-shadow:0 -4px 20px rgba(0,0,0,0.5);
+}
+#custom-keyboard.show{display:flex;}
+.kb-row{display:flex;gap:5px;justify-content:center;}
+.kb-key{
+  background:rgba(255,255,255,0.08);
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius:6px;
+  color:#ffffff;
+  cursor:pointer;
+  font-family:'Share Tech Mono',monospace;
+  font-size:14px;
+  font-weight:600;
+  height:42px;
+  min-width:30px;
+  flex:1;
+  max-width:38px;
+  display:flex;align-items:center;justify-content:center;
+  transition:background 0.1s;
+  user-select:none;
+  -webkit-user-select:none;
+}
+.kb-key:active{background:rgba(184,149,106,0.3);border-color:#b8956a;}
+.kb-key.kb-del{max-width:52px;background:rgba(200,70,70,0.15);border-color:rgba(200,70,70,0.3);color:#c84a4a;font-size:16px;}
+.kb-key.kb-ok{max-width:64px;background:rgba(184,149,106,0.2);border-color:rgba(184,149,106,0.5);color:#b8956a;letter-spacing:1px;}
+.kb-key.kb-space{max-width:120px;letter-spacing:2px;font-size:10px;color:rgba(255,255,255,0.4);}
+
+
+
+/* ── MODAL ANIMATIONS ── */
+@keyframes slideInBottom{from{transform:translateY(100%);opacity:0;}to{transform:translateY(0);opacity:1;}}
+@keyframes slideInTop{from{transform:translateY(-100%);opacity:0;}to{transform:translateY(0);opacity:1;}}
+@keyframes slideInLeft{from{transform:translateX(-100%);opacity:0;}to{transform:translateX(0);opacity:1;}}
+@keyframes slideInRight{from{transform:translateX(100%);opacity:0;}to{transform:translateX(0);opacity:1;}}
+@keyframes scaleIn{from{transform:scale(0.85);opacity:0;}to{transform:scale(1);opacity:1;}}
+@keyframes fadeInUp{from{transform:translateY(40px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+
+/* PLANE RUNWAY */
+#runway-overlay{position:fixed;inset:0;background:rgba(5,8,20,0.97);z-index:3000;display:flex;flex-direction:column;align-items:center;justify-content:center;display:none;gap:16px;}
+#runway-overlay.show{display:flex;opacity:1;animation:slideInBottom 0.4s cubic-bezier(0.34,1.2,0.64,1);}
+.rw-title{font-family:'Inter',sans-serif;font-size:clamp(22px,5vw,34px);color:#ffffff;letter-spacing:0;text-align:center;font-weight:700;}
+#runway-plane{font-size:80px;transition:transform 1s ease-in-out;display:block;text-align:center;filter:drop-shadow(0 0 30px rgba(255,200,100,0.8));}
+.rw-status{font-family:'Inter',sans-serif;font-size:18px;letter-spacing:0;color:#ffffff;text-align:center;height:24px;min-height:24px;}
+#runway-bar-wrap{width:280px;height:6px;background:rgba(255,255,255,0.15);border-radius:3px;}
+#runway-bar{height:6px;background:linear-gradient(90deg,#4a9abe,#b8956a);width:0%;border-radius:3px;transition:width 0.5s;box-shadow:0 0 8px rgba(184,149,106,0.6);}
+
+/* BONUS MODAL */
+#bonus-modal{
+  position:fixed;inset:0;z-index:5000;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);
+  display:none;
+}
+#bonus-modal.show{display:flex;opacity:1;animation:scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1);}
+.bonus-card{
+  background:#0a0e1a;border:1px solid rgba(184,149,106,0.4);
+  border-radius:8px;padding:40px 48px;text-align:center;
+  max-width:420px;width:90vw;
+  box-shadow:0 0 60px rgba(184,149,106,0.15);
+  animation:bonusPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+@keyframes bonusPop{from{transform:scale(0.7);opacity:0}to{transform:scale(1);opacity:1}}
+.bonus-icon{font-size:52px;display:block;margin-bottom:16px;animation:bonusSpin 1s ease both;}
+@keyframes bonusSpin{from{transform:rotate(-20deg) scale(0.5)}to{transform:rotate(0) scale(1)}}
+.bonus-title{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;letter-spacing:3px;color:rgba(184,149,106,0.7);text-transform:uppercase;margin-bottom:10px;}
+.bonus-miles{font-family:'Share Tech Mono',monospace;font-size:clamp(36px,8vw,56px);font-weight:700;color:#b8956a;letter-spacing:2px;animation:countUp 1s ease both;margin-bottom:8px;}
+@keyframes countUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.bonus-sub{font-family:'Inter',sans-serif;font-size:18px;color:rgba(255,255,255,0.85);margin-bottom:28px;line-height:1.6;}
+.bonus-close{
+  background:linear-gradient(135deg,#b8956a,#8a6a40);border:none;border-radius:4px;
+  color:#0a0e1a;cursor:pointer;font-family:'Share Tech Mono',monospace;
+  font-size:12px;letter-spacing:4px;padding:12px 32px;text-transform:uppercase;
+  transition:all 0.3s;
+}
+.bonus-close:hover{box-shadow:0 4px 20px rgba(184,149,106,0.4);}
+
+
+/* SEARCH PROGRESS BAR */
+#search-bar{
+  position:fixed;top:0;left:0;right:0;z-index:1500;
+  background:rgba(5,8,20,0.97);
+  border-bottom:2px solid rgba(255,255,255,0.15);
+  padding:14px 24px;
+  display:block;
+  opacity:0;
+  pointer-events:none;
+  box-shadow:0 4px 20px rgba(0,0,0,0.5);
+}
+#search-bar.show{opacity:1;pointer-events:all;}
+.sb-track{height:5px;background:rgba(255,255,255,0.1);border-radius:3px;margin-bottom:10px;}
+.sb-fill{height:5px;background:linear-gradient(90deg,#4a9abe,#6abcde,#b8956a);border-radius:3px;width:0%;transition:width 0.8s ease;box-shadow:0 0 8px rgba(100,180,220,0.6);}
+#sb-text{font-family:'Share Tech Mono',monospace;font-size:13px;letter-spacing:2px;color:#ffffff;text-align:center;text-shadow:0 1px 4px rgba(0,0,0,0.8);}
+
+/* CHECKLIST MODAL */
+#checklist-overlay{
+  position:fixed;inset:0;z-index:3500;
+  background:rgba(0,0,0,0.92);backdrop-filter:blur(12px);
+  display:flex;align-items:center;justify-content:center;
+  display:none;
+  padding:24px;
+}
+#checklist-overlay.show{display:flex;opacity:1;animation:slideInRight 0.4s cubic-bezier(0.34,1.2,0.64,1);}
+.checklist-card{
+  background:#08090f;border:1px solid rgba(255,255,255,0.1);
+  border-radius:12px;padding:36px 40px;max-width:460px;width:100%;
+  box-shadow:0 0 80px rgba(0,0,0,0.9);
+  animation:bonusPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.checklist-eyebrow{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:5px;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:16px;text-align:center;}
+.checklist-title{font-family:'Inter',sans-serif;font-size:26px;font-weight:700;color:#ffffff;text-align:center;margin-bottom:6px;letter-spacing:-0.3px;}
+.checklist-sub{font-family:'Inter',sans-serif;font-size:17px;color:rgba(255,255,255,0.6);text-align:center;margin-bottom:28px;}
+.checklist-items{display:flex;flex-direction:column;gap:14px;margin-bottom:28px;}
+.checklist-item{
+  display:flex;align-items:center;gap:16px;
+  padding:14px 18px;border-radius:8px;
+  border:1.5px solid rgba(255,255,255,0.1);
+  background:rgba(255,255,255,0.03);
+  cursor:pointer;transition:all 0.3s;user-select:none;
+}
+.checklist-item:hover{border-color:rgba(255,255,255,0.25);background:rgba(255,255,255,0.06);}
+.checklist-item.checked{border-color:rgba(74,200,100,0.5);background:rgba(74,200,100,0.08);}
+.checklist-box{
+  width:28px;height:28px;border-radius:6px;
+  border:2px solid rgba(255,255,255,0.3);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;transition:all 0.3s;font-size:16px;
+  background:transparent;
+}
+.checklist-item.checked .checklist-box{
+  border-color:#4ac864;background:#4ac864;
+}
+.checklist-item-text{flex:1;}
+.checklist-item-label{font-family:'Inter',sans-serif;font-size:17px;font-weight:600;color:#ffffff;letter-spacing:0;display:block;margin-bottom:3px;}
+.checklist-item-desc{font-family:'Inter',sans-serif;font-size:15px;color:rgba(255,255,255,0.5);}
+.checklist-item.checked .checklist-item-desc{color:rgba(74,200,100,0.8);}
+.checklist-icon{font-size:22px;flex-shrink:0;}
+#checklist-confirm{
+  width:100%;background:rgba(255,255,255,0.05);
+  border:1.5px solid rgba(255,255,255,0.2);border-radius:8px;
+  color:rgba(255,255,255,0.4);cursor:not-allowed;
+  font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:4px;
+  padding:14px;text-transform:uppercase;transition:all 0.4s;
+}
+#checklist-confirm.ready{
+  background:linear-gradient(135deg,rgba(74,200,100,0.2),rgba(74,200,100,0.1));
+  border-color:#4ac864;color:#4ac864;cursor:pointer;
+}
+#checklist-confirm.ready:hover{
+  background:linear-gradient(135deg,rgba(74,200,100,0.3),rgba(74,200,100,0.15));
+  box-shadow:0 0 20px rgba(74,200,100,0.2);
+}
+
+/* AUDIO ANNOUNCEMENT MODAL */
+
+#breakfast-modal, #dinner-modal {
+  position:fixed;inset:0;z-index:5000;
+  display:none;align-items:center;justify-content:center;
+  background:rgba(0,0,0,0.92);backdrop-filter:blur(12px);
+}
+#breakfast-modal.show, #dinner-modal.show{display:flex;opacity:1;animation:slideInBottom 0.5s cubic-bezier(0.34,1.2,0.64,1);}
+#breakfast-audio-modal, #dinner-audio-modal{
+  position:fixed;inset:0;z-index:6000;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,0.92);backdrop-filter:blur(12px);
+  display:none;transition:opacity 0.6s;
+}
+#breakfast-audio-modal.show, #dinner-audio-modal.show{display:flex;opacity:1;animation:fadeInUp 0.4s ease;}
+
+#catering-audio-modal{
+  position:fixed;inset:0;z-index:6000;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,0.92);backdrop-filter:blur(12px);
+  display:none;transition:opacity 0.6s;
+}
+#catering-audio-modal.show{display:flex;opacity:1;animation:fadeInUp 0.4s ease;}
+
+#audio-modal{
+  position:fixed;inset:0;z-index:6000;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,0.92);backdrop-filter:blur(12px);
+  display:none;
+}
+#audio-modal.show{display:flex;opacity:1;animation:fadeInUp 0.4s ease;}
+.audio-card{
+  background:#08090f;
+  border:1px solid rgba(184,149,106,0.3);
+  border-radius:8px;padding:40px 48px;text-align:center;
+  max-width:440px;width:90vw;
+  box-shadow:0 0 80px rgba(0,0,0,0.9), 0 0 40px rgba(184,149,106,0.08);
+  animation:bonusPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.audio-eyebrow{font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:5px;color:rgba(255,255,255,0.6);text-transform:uppercase;margin-bottom:20px;}
+.audio-icon-wrap{position:relative;width:80px;height:80px;margin:0 auto 20px;}
+.audio-ring{
+  position:absolute;inset:0;border-radius:50%;
+  border:2px solid rgba(255,255,255,0.3);
+  animation:audioRing 1.5s ease-in-out infinite;
+}
+.audio-ring:nth-child(2){animation-delay:0.5s;border-color:rgba(184,149,106,0.15);}
+.audio-ring:nth-child(3){animation-delay:1s;border-color:rgba(184,149,106,0.07);}
+@keyframes audioRing{0%{transform:scale(1);opacity:1}100%{transform:scale(1.8);opacity:0}}
+.audio-plane{font-size:32px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#ffffff;filter:brightness(10);}
+.audio-title{font-family:'Inter',sans-serif;font-size:22px;font-weight:700;color:#ffffff;margin-bottom:8px;letter-spacing:-0.3px;}
+.audio-sub{font-family:'Inter',sans-serif;font-size:18px;color:rgba(255,255,255,0.85);line-height:1.6;margin-bottom:24px;}
+.audio-bars{display:flex;gap:4px;justify-content:center;align-items:flex-end;height:32px;margin-bottom:24px;}
+.audio-bar{width:4px;background:#b8956a;border-radius:2px;animation:audioBar 0.8s ease-in-out infinite;}
+.audio-bar:nth-child(1){height:12px;animation-delay:0s;}
+.audio-bar:nth-child(2){height:24px;animation-delay:0.15s;}
+.audio-bar:nth-child(3){height:18px;animation-delay:0.3s;}
+.audio-bar:nth-child(4){height:28px;animation-delay:0.1s;}
+.audio-bar:nth-child(5){height:14px;animation-delay:0.25s;}
+.audio-bar:nth-child(6){height:22px;animation-delay:0.05s;}
+.audio-bar:nth-child(7){height:10px;animation-delay:0.2s;}
+@keyframes audioBar{0%,100%{transform:scaleY(0.4);opacity:0.5}50%{transform:scaleY(1);opacity:1}}
+.audio-bar.stopped{animation:none;transform:scaleY(0.3);opacity:0.3;}
+/* audio-skip styled via .skip-announce-btn */
+
+
+/* FLIGHT BAR */
+#flight-bar{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:1500;background:rgba(10,14,26,0.92);border:1px solid rgba(184,149,106,0.25);border-radius:6px;padding:10px 22px;display:flex;flex-direction:column;align-items:center;gap:5px;opacity:0;pointer-events:none;transition:opacity 0.7s;min-width:280px;}
+#flight-bar.show{opacity:1;pointer-events:all;}
+#flight-from-to{font-family:'Share Tech Mono',monospace;font-size:15px;letter-spacing:3px;color:#ffffff;}
+#flight-progress-wrap{width:240px;height:3px;background:rgba(184,149,106,0.15);border-radius:2px;display:none;}
+#flight-progress-bar{height:3px;background:#b8956a;border-radius:2px;width:0%;transition:width 0.5s;}
+#flight-eta{font-family:'Inter',sans-serif;font-size:15px;color:rgba(255,255,255,0.8);}
+
+/* REVEAL */
+#reveal{position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:4000;display:flex;flex-direction:column;align-items:center;justify-content:center;display:none;gap:14px;}
+#reveal.show{display:flex;opacity:1;animation:fadeInUp 0.6s ease;}
+#reveal-pre{font-family:'Share Tech Mono',monospace;font-size:13px;letter-spacing:6px;color:rgba(255,255,255,0.7);text-transform:uppercase;}
+#reveal-title{font-family:'Playfair Display',serif;font-size:clamp(52px,12vw,110px);font-weight:700;font-style:italic;color:#e8d5a3;letter-spacing:8px;animation:rglow 2s ease-in-out infinite;}
+@keyframes rglow{0%,100%{text-shadow:0 0 20px rgba(232,213,163,0.3)}50%{text-shadow:0 0 60px rgba(232,213,163,0.9),0 0 110px rgba(232,213,163,0.3)}}
+#reveal-sub{font-family:'Inter',sans-serif;font-size:clamp(18px,3vw,26px);font-weight:500;color:rgba(255,255,255,0.9);letter-spacing:2px;}
+#reveal-msg{font-family:'Inter',sans-serif;font-size:clamp(16px,2vw,20px);color:rgba(255,255,255,0.85);max-width:460px;text-align:center;line-height:1.8;margin-top:10px;}
+#reveal-year{font-family:'Playfair Display',serif;font-size:clamp(70px,16vw,160px);font-weight:700;color:rgba(232,213,163,0.055);position:absolute;bottom:0;letter-spacing:14px;}
+.confetti{position:fixed;top:-10px;animation:cfall linear forwards;pointer-events:none;}
+@keyframes cfall{to{transform:translateY(110vh) rotate(720deg);opacity:0;}}
+
+/* CATERING MODAL */
+#catering-modal{
+  position:fixed;inset:0;z-index:5500;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,0.88);backdrop-filter:blur(10px);
+  display:none;
+  padding:24px;
+}
+#catering-modal.show{display:flex;opacity:1;animation:slideInBottom 0.5s cubic-bezier(0.34,1.2,0.64,1);}
+.catering-card{
+  background:#08090f;
+  border:1px solid rgba(184,149,106,0.25);
+  border-radius:6px;
+  max-width:500px;width:100%;
+  max-height:90vh;
+  display:flex;flex-direction:column;
+  overflow:hidden;
+  box-shadow:0 0 80px rgba(0,0,0,0.95);
+  animation:bonusPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.catering-body{padding:16px 20px;overflow-y:auto;flex:1;}
+.catering-header{
+  padding:22px 28px 18px;
+  border-bottom:1px solid rgba(184,149,106,0.15);
+  background:linear-gradient(135deg,rgba(184,149,106,0.06) 0%,transparent 60%);
+}
+.catering-eyebrow{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:5px;color:rgba(255,255,255,0.5);text-transform:uppercase;margin-bottom:8px;}
+.catering-title{font-family:'Inter',sans-serif;font-size:24px;font-weight:700;color:#ffffff;letter-spacing:-0.3px;}
+.catering-sub{font-family:'Inter',sans-serif;font-size:16px;color:rgba(255,255,255,0.6);margin-top:4px;}
+
+.catering-item{
+  display:flex;align-items:center;
+  padding:12px 14px;margin-bottom:10px;
+  border:1px solid rgba(184,149,106,0.2);border-radius:3px;
+  background:rgba(255,255,255,0.02);
+  transition:all 0.3s;gap:10px;
+}
+.catering-item:hover:not(.unavailable){
+  border-color:rgba(184,149,106,0.5);
+  background:rgba(184,149,106,0.06);
+  cursor:pointer;
+}
+.catering-item.unavailable{opacity:0.4;cursor:not-allowed;pointer-events:none;}
+.catering-item-left{flex:1;min-width:0;}
+.catering-item-name{font-family:'Inter',sans-serif;font-size:clamp(14px,3.5vw,17px);font-weight:600;color:#ffffff;line-height:1.3;}
+.catering-item-desc{font-family:'Inter',sans-serif;font-size:11px;color:rgba(255,255,255,0.4);letter-spacing:0;margin-top:2px;}
+.catering-item-price{font-family:'Share Tech Mono',monospace;font-size:11px;color:rgba(184,149,106,0.7);letter-spacing:1px;flex-shrink:0;}
+.catering-unavailable-tag{
+  font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;
+  color:#c84a4a;border:1px solid rgba(200,74,74,0.4);
+  padding:3px 7px;border-radius:2px;text-transform:uppercase;
+  white-space:nowrap;flex-shrink:0;
+}
+.catering-warning{
+  background:rgba(200,74,74,0.08);border:1px solid rgba(200,74,74,0.25);
+  border-radius:3px;padding:12px 16px;margin-bottom:14px;
+  font-family:'Inter',sans-serif;font-size:16px;
+  color:rgba(255,140,140,0.95);letter-spacing:0;line-height:1.6;
+  display:none;
+}
+.catering-warning.show{display:block;}
+.catering-bread{
+  border:1px solid rgba(184,149,106,0.5) !important;
+  background:rgba(184,149,106,0.05) !important;
+  display:none;margin-bottom:0;
+}
+.catering-bread.show{display:flex;}
+.catering-bread .catering-item-name{color:#d4aa78;}
+
+.catering-img{
+  width:50px;height:50px;object-fit:cover;
+  border-radius:4px;flex-shrink:0;margin-right:10px;
+  border:1px solid rgba(255,255,255,0.1);
+}
+.catering-item.unavailable .catering-img{filter:grayscale(1);opacity:0.4;}
+@media(min-width:480px){.catering-img{width:64px;height:64px;} .catering-item-name{font-size:17px;}}
+
+#landing-modal{
+  position:fixed;inset:0;z-index:6000;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,0.92);backdrop-filter:blur(12px);
+  display:none;
+}
+#landing-modal.show{display:flex;opacity:1;animation:fadeInUp 0.4s ease;}
+/* landing-skip styled via .skip-announce-btn */
+
+
+/* BOARDING PASS PRINT */
+.bp-printable{background:#f5f0e8;border-radius:12px;overflow:hidden;width:680px;max-width:96vw;box-shadow:0 8px 40px rgba(0,0,0,0.6);font-family:'Share Tech Mono',monospace;}
+.bpp-header{background:linear-gradient(135deg,#0d1117,#1a1535);padding:16px 28px;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #b8956a;}
+.bpp-airline{color:#b8956a;font-size:22px;font-weight:700;letter-spacing:5px;}
+.bpp-tagline{color:rgba(184,149,106,0.6);font-size:11px;letter-spacing:3px;}
+.bpp-body{padding:20px 28px 16px;}
+.bpp-route{display:flex;align-items:center;justify-content:space-between;margin-bottom:0;}
+.bpp-airport{text-align:center;}
+.bpp-code{font-size:48px;font-weight:700;color:#1a1410;letter-spacing:2px;line-height:1;}
+.bpp-city{font-size:12px;color:#5a4a30;letter-spacing:2px;margin-top:4px;text-transform:uppercase;}
+.bpp-label{font-size:9px;color:#9a8a6a;letter-spacing:3px;margin-top:2px;text-transform:uppercase;}
+.bpp-arrow{text-align:center;flex:1;padding:0 16px;}
+.bpp-plane-line{font-size:16px;color:#b8956a;letter-spacing:2px;}
+.bpp-duration{font-size:11px;color:#7a6a50;letter-spacing:2px;margin-top:4px;}
+.bpp-divider-row{display:flex;align-items:center;margin:16px -28px;}
+.bpp-circle{width:20px;height:20px;border-radius:50%;background:#1a1a2e;flex-shrink:0;}
+.bpp-dash{flex:1;border-top:2px dashed #c8b898;}
+.bpp-details{display:grid;grid-template-columns:repeat(3,1fr);gap:12px 20px;margin-top:16px;}
+.bpp-field-label{font-size:9px;color:#9a8a6a;letter-spacing:3px;text-transform:uppercase;margin-bottom:3px;}
+.bpp-field-value{font-size:13px;color:#1a1410;letter-spacing:1px;font-weight:700;}
+.bpp-barcode-wrap{display:flex;justify-content:center;gap:2px;padding:14px 0 4px;margin-top:12px;border-top:1px dashed #c8b898;}
+.bpp-bar{background:#1a1410;border-radius:1px;}
+@media print{
+  body > *:not(#bp-print-modal){display:none !important;}
+  #bp-print-modal{position:static !important;opacity:1 !important;pointer-events:all !important;background:#fff !important;padding:20px !important;}
+  #bp-print-modal > div:first-child{display:none !important;}
+  .bp-printable{box-shadow:none !important;page-break-after:always;}
+  .bpp-circle{background:#000 !important;}
+}
+
+.catering-bread-btn{
+  background:linear-gradient(135deg,#b8956a,#8a6a40);border:none;border-radius:3px;
+  color:#0a0e1a;cursor:pointer;font-family:'Share Tech Mono',monospace;
+  font-size:11px;letter-spacing:3px;padding:10px 20px;text-transform:uppercase;
+  transition:all 0.3s;margin-top:14px;width:100%;
+}
+.catering-bread-btn:hover{box-shadow:0 4px 20px rgba(184,149,106,0.3);}
+</style>
+</head>
+<body>
+
+<div id="intro">
+  <canvas id="intro-canvas"></canvas>
+  <div id="intro-content">
+    <div class="intro-eyebrow">Powered by · Mystery Airlines</div>
+    <h1>Avion <span>cu motor</span></h1>
+    <div class="intro-tagline">Ai ales aventura. Undeva pe acest pământ te așteaptă o vacanță. Doar harta știe răspunsul, dar nu îl va dezvălui ușor.</div>
+    <div class="intro-divider"></div>
+    <button class="intro-btn" id="start-btn">Partikip</button>
+    <div class="intro-plane">✈</div>
+  </div>
+</div>
+
+<div id="instructions">
+  <div class="instr-card">
+    <div class="instr-header">
+      <div class="instr-eyebrow">Mystery Airlines · Briefing Confidențial</div>
+      <h2>Misiunea <em>ta</em> începe.</h2>
+      <div class="instr-header-sub">Citește cu atenție înainte de a continua.</div>
+    </div>
+    <div class="instr-body">
+      <div class="instr-rule">
+        <div class="instr-num">1</div>
+        <div class="instr-text">Fiecare cuvânt-cheie descoperit la integrame valorează un anumit număr de Mystery Miles. Cu milele acumulate, poți debloca regiuni de pe hartă.</div>
+      </div>
+      <div class="instr-rule">
+        <div class="instr-num">2</div>
+        <div class="instr-text">Va trebui să alegi fix 4 cuvinte din cele 7, nici mai mult, nici mai puțin, și să le introduci la pagina boardingpass.</div>
+      </div>
+      <div class="instr-rule">
+        <div class="instr-num">3</div>
+        <div class="instr-text">Dacă ești norocos și nimerești Cuvântul Misterios, poți debloca toate destinațiile disponibile.</div>
+      </div>
+      <hr class="instr-divider"/>
+      <div class="instr-warning">
+        <div class="instr-warn-icon">⚠</div>
+        <p>Alege cu grijă! Unele cuvinte pot avea valoare mică. Odată confirmat cuvântul, nu îl mai poți modifica!</p>
+      </div>
+    </div>
+    <div class="instr-footer">
+      <button id="instr-start">Am înțeles, sunt pregătit!</button>
+    </div>
+  </div>
+</div>
+
+<div id="map"></div>
+<div id="vignette"></div>
+
+<!-- Game Panel -->
+<div id="game-panel">
+  <div id="boarding-pass">
+    <div class="bp-header">
+      <div class="bp-airline">MYSTERY AIRLINES</div>
+      <div class="bp-flightno">ZBOR MA-SHJ11 // BOARDING PASS</div>
+    </div>
+    <div class="bp-body">
+      <div class="bp-left">
+        <div class="bp-route">
+          <div class="bp-field"><div class="bp-label">De la</div><div class="bp-value">CLJ</div></div>
+          <div style="font-size:18px;color:#b8956a;align-self:center;font-family:'Share Tech Mono',monospace;">- - →</div>
+          <div class="bp-field"><div class="bp-label">Către</div><div class="bp-value unknown" id="dest-display">??? NECUNOSCUT</div></div>
+          <div class="bp-field" style="text-align:right"><div class="bp-label">Cuvinte</div><div class="bp-value" id="words-counter">0 / 4</div></div>
+        </div>
+        <div class="bp-perf"><div class="bp-perf-c"></div><div class="bp-perf-l"></div><div class="bp-perf-c"></div></div>
+        <div style="margin-bottom:8px;">
+          <div class="bp-baro-label"><span>MILE ACUMULATE</span><span id="km-display">0 mile</span></div>
+          <div class="bp-baro-track"><div class="bp-baro-fill" id="baro-fill"></div></div>
+          <div id="baro-zone">Introdu primul cuvânt pentru a începe</div>
+        </div>
+        <div class="bp-input-section">
+          <div class="bp-input-status" id="input-status">CUVÂNT 1 DIN 4</div>
+          <div class="bp-input-row">
+            <input id="word-input" placeholder="INTRODU CUVÂNTUL..." autocomplete="off" readonly />
+            <button id="word-submit">OK</button>
+          </div>
+          <div id="win-msg"><span id="win-text"></span></div>
+          <div class="bp-used-words" id="used-words"></div>
+  <button id="launch-btn">✈ CONTINUĂ</button>
+        </div>
+      </div>
+      <div class="bp-right">
+        <div class="bp-dest-title">REGIUNI DEBLOCATE</div>
+        <svg id="world-map-svg" viewBox="0 0 500 280" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="rglow">
+              <feGaussianBlur stdDeviation="3" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <!-- Ocean -->
+          <rect width="500" height="280" fill="#0d1825" rx="4"/>
+          <!-- Equator -->
+          <line x1="0" y1="148" x2="500" y2="148" stroke="#2a3a5a" stroke-width="0.5" stroke-dasharray="3 3" opacity="0.5"/>
+
+          <!-- Americas (North) -->
+          <path id="rgn-amer" class="map-region" d="M18 45 L42 38 L62 40 L72 50 L78 62 L74 78 L68 95 L60 108 L48 118 L36 115 L24 102 L16 85 L14 68 Z"/>
+          <!-- Americas (South) -->
+          <path id="rgn-sam" class="map-region" d="M52 122 L76 118 L88 128 L92 145 L88 168 L80 188 L66 198 L52 195 L42 180 L38 160 L40 140 Z"/>
+          <!-- Greenland -->
+          <path class="map-region" style="pointer-events:none" d="M68 18 L84 14 L94 20 L90 34 L76 38 L64 30 Z" opacity="0.5"/>
+
+          <!-- Europe -->
+          <path id="rgn-europe" class="map-region" d="M190 42 L208 36 L224 38 L236 44 L240 54 L234 64 L224 70 L212 72 L200 68 L190 58 Z"/>
+          <!-- Scandinavia -->
+          <path class="map-region" id="rgn-europe-scan" onclick="document.getElementById('rgn-europe').dispatchEvent(new Event('click'))" style="cursor:pointer" d="M198 22 L210 16 L220 20 L222 32 L212 38 L200 34 Z" opacity="0.8"/>
+
+          <!-- North Africa -->
+          <path id="rgn-nafr" class="map-region" d="M172 78 L258 74 L270 86 L268 108 L254 120 L228 124 L200 122 L178 110 L168 94 Z"/>
+
+          <!-- Middle East -->
+          <path id="rgn-me" class="map-region" d="M262 72 L308 68 L320 78 L318 98 L306 110 L284 112 L266 104 L258 88 Z"/>
+
+          <!-- Sub-Saharan Africa -->
+          <path id="rgn-safr" class="map-region" d="M176 126 L260 122 L270 138 L268 162 L256 186 L238 200 L218 202 L200 192 L182 172 L172 148 Z"/>
+
+          <!-- Central Asia -->
+          <path id="rgn-cas" class="map-region" d="M308 52 L372 46 L386 58 L382 76 L364 84 L334 82 L310 72 Z"/>
+
+          <!-- South Asia -->
+          <path id="rgn-sas" class="map-region" d="M318 82 L368 78 L384 90 L382 112 L366 128 L344 132 L326 120 L316 100 Z"/>
+
+          <!-- Southeast Asia -->
+          <path id="rgn-seas" class="map-region" d="M368 96 L412 90 L428 100 L430 118 L416 130 L394 132 L372 120 Z"/>
+          <!-- SE Asia islands -->
+          <ellipse id="rgn-seas-isl" onclick="document.getElementById('rgn-seas').dispatchEvent(new Event('click'))" class="map-region" cx="408" cy="148" rx="20" ry="8" style="cursor:pointer"/>
+          <ellipse onclick="document.getElementById('rgn-seas').dispatchEvent(new Event('click'))" class="map-region" cx="430" cy="155" rx="14" ry="6" style="cursor:pointer"/>
+
+          <!-- East Asia -->
+          <path id="rgn-eas" class="map-region" d="M376 42 L440 36 L456 48 L452 72 L436 82 L406 84 L380 74 Z"/>
+
+          <!-- Oceania -->
+          <path id="rgn-oce" class="map-region" d="M400 168 L438 162 L450 172 L446 186 L428 192 L408 188 Z"/>
+          <ellipse onclick="document.getElementById('rgn-oce').dispatchEvent(new Event('click'))" class="map-region" cx="464" cy="178" rx="10" ry="6" style="cursor:pointer"/>
+
+          <!-- Russia outline (decorative) -->
+          <path class="map-region" style="opacity:0.3;pointer-events:none" d="M222 18 L380 10 L460 22 L458 40 L374 44 L222 38 Z"/>
+        </svg>
+        <div id="map-zone-label">Introdu cuvinte pentru a debloca regiuni</div>
+      </div>
+      <div class="bp-barcode" id="barcode"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Roulette -->
+<div id="roulette-overlay">
+  <div class="rl-title">RULETA DESTINAȚIEI</div>
+  <div class="rl-sub" id="rl-sub">Rotește pentru a afla unde mergi...</div>
+  <div id="roulette-wrap">
+    <div class="rl-needle">▼</div>
+    <canvas id="roulette-canvas" width="440" height="440"></canvas>
+    <div class="rl-center">✈</div>
+  </div>
+  <button id="spin-btn">ROTEȘTE</button>
+  <div id="spin-result"></div>
+</div>
+
+<!-- Mystery Destination Modal -->
+<div id="mystery-modal">
+  <div id="mystery-modal-card">
+    <canvas id="fireworks-canvas"></canvas>
+    <div style="position:relative;z-index:2;">
+      <div class="myst-eyebrow">Mystery Airlines · Selecție specială</div>
+      <div class="myst-icon">🎰</div>
+      <div class="myst-title">Ai nimerit Mystery Destination!</div>
+      <div class="myst-text">
+        Felicitări, ai dat de singurul segment din ruletă care scapă de sub control!<br><br>
+        <strong>Iată ce urmează:</strong> algoritmul nostru va scana harta în timp real, va analiza destinații la întâmplare și va selecta coordonate până când găsește exact locul potrivit pentru tine. Avionul va decola spre acel punct imediat după confirmare.<br><br>
+        Vei afla destinația <strong>abia la aterizare</strong>. Până atunci, urmărește cu atenție anunțurile echipajului de bord, deoarece conțin indicii importante.<br><br>
+        Mult succes. O să ai nevoie. 🛫
+      </div>
+      <button id="mystery-continue-btn" onclick="closeMysteryModal()">AM ÎNȚELES, BO$$!</button>
+    </div>
+  </div>
+</div>
+
+<!-- Ignore Crew Funny Modal -->
+<div id="ignore-modal">
+  <div id="ignore-modal-card">
+    <div class="ignore-icon">🚨</div>
+    <div class="ignore-title">Greșeală gravă.</div>
+    <div class="ignore-text">
+      Ai ignorat anunțul. Echipajul a notat acest lucru. Nu cu supărare. Cu dezamăgire, ceea ce e mai rău.<br><br>
+      Cina ta a fost <strong>redistribuită piloților</strong>. Piloții au mâncat foarte bine. Îți mulțumesc.<br><br>
+      <em style="color:rgba(184,149,106,0.8);">Noapte bună. Eventual.</em>
+    </div>
+    <button id="ignore-close-btn" onclick="closeIgnoreModal()">AM ÎNȚELES. MĂ CONFORMEZ.</button>
+  </div>
+</div>
+
+<!-- Runway -->
+<div id="runway-overlay">
+  <div class="rw-title">PREGĂTIRE DE DECOLARE</div>
+  <div id="runway-plane">✈</div>
+  <div class="rw-status" id="rw-status">Motoarele pornesc...</div>
+  <div id="runway-bar-wrap"><div id="runway-bar"></div></div>
+</div>
+
+<!-- Audio Modal -->
+<div id="audio-modal">
+  <div class="audio-card">
+    <div class="audio-eyebrow">Mystery Airlines · Anunț de bord</div>
+    <div class="audio-icon-wrap">
+      <div class="audio-ring"></div>
+      <div class="audio-ring"></div>
+      <div class="audio-ring"></div>
+      <div class="audio-plane">✈</div>
+    </div>
+    <div class="audio-title">Anunț Important</div>
+    <div class="audio-sub">Te rugăm să asculți cu atenție<br>mesajul echipajului de bord.</div>
+    <div class="audio-bars">
+      <div class="audio-bar"></div>
+      <div class="audio-bar"></div>
+      <div class="audio-bar"></div>
+      <div class="audio-bar"></div>
+      <div class="audio-bar"></div>
+      <div class="audio-bar"></div>
+      <div class="audio-bar"></div>
+    </div>
+    <audio id="announcement-audio" src="audio1.mp3"></audio>
+    <button id="audio-skip" class="skip-announce-btn" onclick="window.showIgnoreModal()">IGNORĂ ANUNȚUL</button>
+  </div>
+</div>
+
+
+<!-- Bonus Modal -->
+<div id="bonus-modal">
+  <div class="bonus-card">
+    <span class="bonus-icon">🎁</span>
+    <div class="bonus-title">Mystery Airlines Bonus</div>
+    <div class="bonus-miles" id="bonus-miles-text">+8,500 mile</div>
+    <div class="bonus-sub">Sărăkie! De milă, Mystery Airlines îți oferă aceste mile bonus.<br>Acum poți zbura mai departe. Cu binele nostru.</div>
+    <button class="bonus-close" id="bonus-close-btn">Mulțumesc!</button>
+  </div>
+</div>
+
+<!-- Catering Modal -->
+<!-- Catering Audio Modal -->
+<!-- BREAKFAST Audio Modal -->
+<div id="breakfast-audio-modal">
+  <div class="audio-card">
+    <div class="audio-eyebrow">Mystery Airlines · Mic Dejun</div>
+    <div class="audio-icon-wrap">
+      <div class="audio-ring"></div><div class="audio-ring"></div><div class="audio-ring"></div>
+      <div class="audio-plane">✈</div>
+    </div>
+    <div class="audio-title">Serviciu la bord</div>
+    <div class="audio-sub">Te rugăm să asculți mesajul<br>echipajului de cabină.</div>
+    <div class="audio-bars" id="breakfast-bars">
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      <div class="audio-bar"></div>
+    </div>
+    <button id="breakfast-skip" class="skip-announce-btn" onclick="
+window.showIgnoreModal4 = function(){
+  var audio = document.getElementById('breakfast-audio');
+  if(audio){ audio.pause(); }
+  document.getElementById('ignore-modal-4').classList.add('show');
+};
+
+window.closeIgnoreModal4 = function(){
+  document.getElementById('ignore-modal-4').classList.remove('show');
+  // Replay breakfast audio
+  var audio = document.getElementById('breakfast-audio');
+  var audioModal = document.getElementById('breakfast-audio-modal');
+  audioModal.classList.add('show');
+  audio.currentTime = 0;
+  audio.play().catch(function(){ 
+    audioModal.classList.remove('show');
+    document.getElementById('breakfast-modal').classList.add('show');
+  });
+  function openMenu(){
+    if(openMenu.done) return; openMenu.done=true;
+    audioModal.classList.remove('show');
+    document.getElementById('breakfast-modal').classList.add('show');
+  }
+  audio.onended = openMenu;
+  setTimeout(openMenu, 120000);
+};
+
+window.showIgnoreModal5 = function(){
+  var audio = document.getElementById('dinner-audio');
+  if(audio){ audio.pause(); }
+  document.getElementById('ignore-modal-5').classList.add('show');
+};
+
+window.closeIgnoreModal5 = function(){
+  document.getElementById('ignore-modal-5').classList.remove('show');
+  // Replay dinner audio
+  var audio = document.getElementById('dinner-audio');
+  var audioModal = document.getElementById('dinner-audio-modal');
+  audioModal.classList.add('show');
+  audio.currentTime = 0;
+  audio.play().catch(function(){
+    audioModal.classList.remove('show');
+    document.getElementById('dinner-modal').classList.add('show');
+  });
+  function openMenu(){
+    if(openMenu.done) return; openMenu.done=true;
+    audioModal.classList.remove('show');
+    document.getElementById('dinner-modal').classList.add('show');
+  }
+  audio.onended = openMenu;
+  setTimeout(openMenu, 120000);
+};
+
+window.showIgnoreModal4()">IGNORĂ ANUNȚUL</button>
+  </div>
+</div>
+
+<!-- BREAKFAST Modal -->
+<div id="breakfast-modal">
+  <audio id="breakfast-audio" src="audio_breakfast.mp3"></audio>
+  <div class="catering-card">
+    <div class="catering-header">
+      <div class="catering-eyebrow">Mystery Airlines · Mic Dejun</div>
+      <div class="catering-title">Mic dejun la bord</div>
+      <div class="catering-sub">Vă rugăm să selectați preparatul dorit.</div>
+    </div>
+    <div class="catering-body">
+      <div class="catering-warning" id="breakfast-warning"></div>
+      <div class="catering-item" id="bfst-item-0" onclick="selectBreakfastItem(0)">
+        <img src="oua.png" class="catering-img" alt="Ouă Benedict"/>
+        <div class="catering-item-left">
+          <div class="catering-item-name">Ouă Benedict cu somon afumat</div>
+          <div class="catering-item-desc">SERVIT CALD · SOSUL HOLLANDAISE E FRESH</div>
+        </div>
+        <div class="catering-item-price">inclus</div>
+      </div>
+      <div class="catering-item" id="bfst-item-1" onclick="selectBreakfastItem(1)">
+        <img src="croissant.png" class="catering-img" alt="Croissant"/>
+        <div class="catering-item-left">
+          <div class="catering-item-name">Croissant cu unt de trufe și caviar</div>
+          <div class="catering-item-desc">CROCANT · IMPORTAT DIN PARIS ÎN DIMINEAȚA ASTA</div>
+        </div>
+        <div class="catering-item-price">inclus</div>
+      </div>
+      <div class="catering-item" id="bfst-item-2" onclick="selectBreakfastItem(2)">
+        <img src="acai.png" class="catering-img" alt="Acai Bowl"/>
+        <div class="catering-item-left">
+          <div class="catering-item-name">Acai bowl cu fructe exotice și granola artizanală</div>
+          <div class="catering-item-desc">VEGAN · FRUCT EXOTIC · VERY WELLNESS</div>
+        </div>
+        <div class="catering-item-price">inclus</div>
+      </div>
+      <div class="catering-item catering-bread" id="bfst-bread" style="display:none;">
+        <div>
+          <div class="catering-item-name">O felie de pâine</div>
+          <div class="catering-item-desc">USCATĂ · FĂRĂ UNT · FĂRĂ SCUZE</div>
+        </div>
+        <div class="catering-item-price">inclus</div>
+      </div>
+      <button class="catering-bread-btn" id="breakfast-continue-btn" style="display:none;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:#ffffff;" onclick="revealBreakfastBread()">Ce a mai rămas?</button>
+      <button class="catering-bread-btn" id="breakfast-accept-btn" style="display:none" onclick="acceptBreakfast()">Acceptă cu demnitate</button>
+    </div>
+  </div>
+</div>
+
+<!-- LUNCH Audio Modal -->
+<div id="catering-audio-modal">
+  <div class="audio-card">
+    <div class="audio-eyebrow">Mystery Airlines · Prânz</div>
+    <div class="audio-icon-wrap">
+      <div class="audio-ring"></div><div class="audio-ring"></div><div class="audio-ring"></div>
+      <div class="audio-plane">✈</div>
+    </div>
+    <div class="audio-title">Serviciu la bord</div>
+    <div class="audio-sub">Te rugăm să asculți mesajul<br>echipajului de cabină.</div>
+    <div class="audio-bars" id="catering-bars">
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      <div class="audio-bar"></div>
+    </div>
+    <button id="catering-skip" class="skip-announce-btn" onclick="window.showIgnoreModal2()">IGNORĂ ANUNȚUL</button>
+  </div>
+</div>
+
+<!-- LUNCH Modal -->
+<div id="catering-modal">
+  <audio id="catering-audio" src="audio2.mp3"></audio>
+  <div class="catering-card">
+    <div class="catering-header">
+      <div class="catering-eyebrow">Mystery Airlines · Prânz</div>
+      <div class="catering-title">Meniu la bord</div>
+      <div class="catering-sub">Vă rugăm să selectați preparatul dorit.</div>
+    </div>
+    <div class="catering-body">
+      <div class="catering-warning" id="catering-warning"></div>
+      <div class="catering-item" id="cat-item-0" onclick="selectCateringItem(0)">
+        <img src="mici.png" class="catering-img" alt="Mici"/>
+        <div class="catering-item-left">
+          <div class="catering-item-name">Mici cu cartofi prăjiți și muștar</div>
+          <div class="catering-item-desc">SPECIALITATEA CASEI · SERVIT CALD</div>
+        </div>
+        <div class="catering-item-price">inclus</div>
+      </div>
+      <div class="catering-item" id="cat-item-1" onclick="selectCateringItem(1)">
+        <img src="sarmale.png" class="catering-img" alt="Sarmale"/>
+        <div class="catering-item-left">
+          <div class="catering-item-name">Sarmale cu smântână</div>
+          <div class="catering-item-desc">TRADITIONAL · CHEF'S RECOMMENDATION</div>
+        </div>
+        <div class="catering-item-price">inclus</div>
+      </div>
+      <div class="catering-item" id="cat-item-2" onclick="selectCateringItem(2)">
+        <img src="fancy.png" class="catering-img" alt="Wagyu"/>
+        <div class="catering-item-left">
+          <div class="catering-item-name">Wagyu A5 fript la flacără</div>
+          <div class="catering-item-desc">PIURE CU TRUFE · CHÂTEAU PÉTRUS 1987</div>
+        </div>
+        <div class="catering-item-price">inclus</div>
+      </div>
+      <div class="catering-item catering-bread" id="cat-bread">
+        <div>
+          <div class="catering-item-name">O chiflă</div>
+          <div class="catering-item-desc">ATÂT A MAI RĂMAS · USCATĂ · FĂRĂ OPȚIUNI SUPLIMENTARE</div>
+        </div>
+        <div class="catering-item-price">inclus</div>
+      </div>
+      <button class="catering-bread-btn" id="catering-continue-btn" style="display:none;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:#ffffff;" onclick="revealBread()">Ce a mai rămas?</button>
+      <button class="catering-bread-btn" id="catering-accept-btn" style="display:none" onclick="acceptBread()">Acceptă cu demnitate</button>
+    </div>
+  </div>
+</div>
+
+<!-- DINNER Audio Modal -->
+<div id="dinner-audio-modal">
+  <div class="audio-card">
+    <div class="audio-eyebrow">Mystery Airlines · Cină</div>
+    <div class="audio-icon-wrap">
+      <div class="audio-ring"></div><div class="audio-ring"></div><div class="audio-ring"></div>
+      <div class="audio-plane">✈</div>
+    </div>
+    <div class="audio-title">Serviciu la bord</div>
+    <div class="audio-sub">Te rugăm să asculți mesajul<br>echipajului de cabină.</div>
+    <div class="audio-bars" id="dinner-bars">
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      <div class="audio-bar"></div><div class="audio-bar"></div><div class="audio-bar"></div>
+      <div class="audio-bar"></div>
+    </div>
+    <button id="dinner-skip" class="skip-announce-btn" onclick="window.showIgnoreModal5()">IGNORĂ ANUNȚUL</button>
+  </div>
+</div>
+
+<!-- DINNER Modal -->
+<div id="dinner-modal">
+  <audio id="dinner-audio" src="audio_dinner.mp3"></audio>
+  <div class="catering-card">
+    <div class="catering-header">
+      <div class="catering-eyebrow">Mystery Airlines · Cină</div>
+      <div class="catering-title">Cină la bord</div>
+      <div class="catering-sub">Vă rugăm să selectați preparatul dorit.</div>
+    </div>
+    <div class="catering-body">
+      <div class="catering-warning" id="dinner-warning"></div>
+      <div class="catering-item" id="din-item-0" onclick="selectDinnerItem(0)">
+        <img src="vita.png" class="catering-img" alt="Vită Wellington"/>
+        <div class="catering-item-left">
+          <div class="catering-item-name">File de vită Wellington cu sos de vin roșu</div>
+          <div class="catering-item-desc">RARE · DACĂ VREȚI MEDIUM VĂ RUGĂM SĂ RECONSIDERAȚI</div>
+        </div>
+        <div class="catering-item-price">inclus</div>
+      </div>
+      <div class="catering-item" id="din-item-1" onclick="selectDinnerItem(1)">
+        <img src="homar.png" class="catering-img" alt="Homard"/>
+        <div class="catering-item-left">
+          <div class="catering-item-name">Homard la grătar cu unt de lămâie și ierburi</div>
+          <div class="catering-item-desc">PROASPĂT · DIN MAREA PE CARE O SURVOLĂM</div>
+        </div>
+        <div class="catering-item-price">inclus</div>
+      </div>
+      <div class="catering-item" id="din-item-2" onclick="selectDinnerItem(2)">
+        <img src="risotto.png" class="catering-img" alt="Risotto"/>
+        <div class="catering-item-left">
+          <div class="catering-item-name">Risotto cu ciuperci porcini și parmezan 36 luni</div>
+          <div class="catering-item-desc">VEGETARIAN · CREMOS · EXTREM DE SERIOS</div>
+        </div>
+        <div class="catering-item-price">inclus</div>
+      </div>
+      <div class="catering-item catering-bread" id="din-bread" style="display:none;">
+        <div>
+          <div class="catering-item-name">Resturi de la prânz</div>
+          <div class="catering-item-desc">RECONDIȚIONAT · NU ÎNTREBAȚI · INCLUS</div>
+        </div>
+        <div class="catering-item-price">inclus</div>
+      </div>
+      <button class="catering-bread-btn" id="dinner-continue-btn" style="display:none;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.2);color:#ffffff;" onclick="revealDinnerBread()">Ce a mai rămas?</button>
+      <button class="catering-bread-btn" id="dinner-accept-btn" style="display:none" onclick="acceptDinner()">Acceptă cu demnitate</button>
+    </div>
+  </div>
+</div>
+
+<!-- Miles Dialog -->
+<div id="miles-dialog" style="position:fixed;inset:0;z-index:6500;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);padding:20px;">
+  <div style="background:#08090f;border:1px solid rgba(184,149,106,0.35);border-radius:6px;max-width:380px;width:100%;padding:28px 28px 22px;animation:bonusPop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;">
+    <div style="font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:4px;color:rgba(184,149,106,0.6);text-transform:uppercase;margin-bottom:10px;">Mystery Airlines · Miles Update</div>
+    <div id="miles-dialog-km" style="font-family:'Inter',sans-serif;font-size:36px;font-weight:700;color:#b8956a;margin-bottom:10px;letter-spacing:-1px;"></div>
+    <div id="miles-dialog-msg" style="font-family:'Inter',sans-serif;font-size:15px;color:rgba(255,255,255,0.85);line-height:1.6;margin-bottom:20px;"></div>
+    <button onclick="closeMilesDialog()" style="background:rgba(184,149,106,0.1);border:1px solid rgba(184,149,106,0.4);border-radius:3px;color:#b8956a;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:3px;padding:10px 24px;text-transform:uppercase;width:100%;transition:all 0.3s;">CONTINUĂ</button>
+  </div>
+</div>
+
+<!-- Search Progress Bar -->
+<div id="search-bar">
+  <div class="sb-track"><div class="sb-fill" id="sb-fill"></div></div>
+  <div id="sb-text">Se inițializează căutarea...</div>
+</div>
+
+<!-- Checklist Modal -->
+<div id="checklist-overlay">
+  <div class="checklist-card">
+    <div class="checklist-eyebrow">Mystery Airlines · Pre-flight checklist</div>
+    <div class="checklist-title">Înainte de decolare</div>
+    <div class="checklist-sub">Bifează toate elementele pentru a putea decola.</div>
+    <div class="checklist-items">
+      <div class="checklist-item" id="chk-0" onclick="toggleCheck(0)">
+        <div class="checklist-icon">📵</div>
+        <div class="checklist-item-text">
+          <span class="checklist-item-label">Flight Mode activ</span>
+          <span class="checklist-item-desc">Telefonul este pe modul avion</span>
+        </div>
+        <div class="checklist-box" id="chkbox-0"></div>
+      </div>
+      <div class="checklist-item" id="chk-1" onclick="toggleCheck(1)">
+        <div class="checklist-icon">💺</div>
+        <div class="checklist-item-text">
+          <span class="checklist-item-label">Centură de siguranță</span>
+          <span class="checklist-item-desc">Prinsă și ajustată corect</span>
+        </div>
+        <div class="checklist-box" id="chkbox-1"></div>
+      </div>
+      <div class="checklist-item" id="chk-2" onclick="toggleCheck(2)">
+        <div class="checklist-icon">🪟</div>
+        <div class="checklist-item-text">
+          <span class="checklist-item-label">Parasolare ridicate</span>
+          <span class="checklist-item-desc">Toate jaluzelele sunt sus</span>
+        </div>
+        <div class="checklist-box" id="chkbox-2"></div>
+      </div>
+      <div class="checklist-item" id="chk-3" onclick="toggleCheck(3)">
+        <div class="checklist-icon">🪑</div>
+        <div class="checklist-item-text">
+          <span class="checklist-item-label">Scaun în poziție verticală</span>
+          <span class="checklist-item-desc">Spătarul ridicat pentru decolare</span>
+        </div>
+        <div class="checklist-box" id="chkbox-3"></div>
+      </div>
+    </div>
+    <button id="checklist-confirm" disabled onclick="confirmChecklist()">Confirmat — Pregătit de decolare</button>
+  </div>
+</div>
+
+<div id="flight-bar">
+  <div id="flight-from-to">CLJ → ?</div>
+  <div id="flight-progress-wrap"><div id="flight-progress-bar"></div></div>
+</div>
+
+<div id="reveal">
+  <div id="reveal-pre">Am ajuns în</div>
+  <div id="reveal-title">Indonezia</div>
+  <div id="reveal-sub">Indonezia · 2027</div>
+  <div id="reveal-msg">La celălalt capăt al lumii,<br>unde pământul fierbe sub picioare,<br>unde aerul miroase a pădure după ploaie,<br>unde vulcanii dorm cu ochii deschiși<br>și dragonii nu sunt doar un vis.</div>
+  <div id="reveal-year">2027</div>
+  <button id="print-bp-btn" onclick="showBoardingPassPrint()" style="margin-top:32px;background:rgba(184,149,106,0.15);border:1.5px solid rgba(184,149,106,0.6);color:#e8d5a3;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:4px;padding:14px 36px;text-transform:uppercase;border-radius:2px;transition:all 0.4s;opacity:0;animation:fadeUp 1s 2s both;">✈ PRINTEAZĂ BOARDING PASS</button>
+</div>
+
+<!-- Landing Audio Modal -->
+<div id="landing-modal">
+  <div class="audio-card">
+    <div class="audio-eyebrow">Mystery Airlines · Anunț de aterizare</div>
+    <div class="audio-icon-wrap">
+      <div class="audio-ring"></div>
+      <div class="audio-ring"></div>
+      <div class="audio-ring"></div>
+      <div class="audio-plane">✈</div>
+    </div>
+    <div class="audio-title" id="landing-title">Anunț de aterizare</div>
+    <div class="audio-sub" id="landing-sub">Preparing to land at<br>Soekarno-Hatta International Airport</div>
+    <div class="audio-bars" id="landing-bars">
+      <div class="audio-bar"></div>
+      <div class="audio-bar"></div>
+      <div class="audio-bar"></div>
+      <div class="audio-bar"></div>
+      <div class="audio-bar"></div>
+      <div class="audio-bar"></div>
+      <div class="audio-bar"></div>
+    </div>
+    <audio id="landing-audio" src="audio3.mp3"></audio>
+    <button id="landing-skip" class="skip-announce-btn" onclick="window.showIgnoreModal3()">IGNORĂ ANUNȚUL</button>
+  </div>
+</div>
+<!-- Ignore Modal 2 - catering/lunch penalty -->
+<div id="ignore-modal-2">
+  <div id="ignore-modal-card-2">
+    <div class="ignore-icon">🍞</div>
+    <div class="ignore-title">Consecințe imediate.</div>
+    <div class="ignore-text">
+      Chifla ta a fost confiscată.<br><br>
+      Nu din răzbunare. Pur și simplu procedura internă Mystery Airlines prevede că pasagerii care ignoră anunțurile de serviciu <strong>pierd automat dreptul la masa caldă</strong>.<br><br>
+      Și la masa rece. Și la orice altceva.<br><br>
+      <em style="color:rgba(184,149,106,0.8);">Vă mulțumim pentru înțelegere. Și pentru chiflă.</em>
+    </div>
+    <button id="ignore-close-btn-2" onclick="closeIgnoreModal2()">AM ÎNȚELES. ÎMI PARE RĂU.</button>
+  </div>
+</div>
+
+<!-- Ignore Modal 3 - landing penalty -->
+<div id="ignore-modal-3">
+  <div id="ignore-modal-card-3">
+    <div class="ignore-icon">🛬</div>
+    <div class="ignore-title">Eroare fatală.</div>
+    <div class="ignore-text">
+      Tocmai ai ignorat anunțul de aterizare.<br><br>
+      Ca urmare, Mystery Airlines nu mai poate garanta că știi unde aterizezi. Aceasta este, de fapt, <strong>situația ta curentă</strong>.<br><br>
+      De asemenea, bagajul tău a fost redirecționat spre o destinație nedivulgată. Poate ajunge. Poate nu.<br><br>
+      <em style="color:rgba(184,149,106,0.8);">Bine ai venit. Undeva.</em>
+    </div>
+    <button id="ignore-close-btn-3" onclick="closeIgnoreModal3()">AM ÎNȚELES. ATERIZEZ ORICUM.</button>
+  </div>
+</div>
+
+<!-- Ignore Modal 4 - breakfast penalty -->
+<div id="ignore-modal-4">
+  <div id="ignore-modal-card-2">
+    <div class="ignore-icon">🌅</div>
+    <div class="ignore-title">Eroare de dimineață.</div>
+    <div class="ignore-text">
+      Ai ignorat anunțul de mic dejun.<br><br>
+      Ca urmare, conform <strong>Regulamentului Intern Mystery Airlines, Secțiunea Mic Dejun</strong>, masa ta a fost redistribuită unui pasager mai ascultător.<br><br>
+      Acesta a mâncat bine. Tu nu.<br><br>
+      <em style="color:rgba(184,149,106,0.8);">Bună dimineața, totuși.</em>
+    </div>
+    <button id="ignore-close-btn-4" onclick="closeIgnoreModal4()">AM ÎNȚELES. ASCULT.</button>
+  </div>
+</div>
+
+<!-- Ignore Modal 5 - dinner penalty -->
+<div id="ignore-modal-5">
+  <div id="ignore-modal-card-3">
+    <div class="ignore-icon">🌙</div>
+    <div class="ignore-title">Seară compromisă.</div>
+    <div class="ignore-text">
+      Ai ignorat anunțul de cină.<br><br>
+      Echipajul a notat acest lucru. Nu cu supărare. Cu dezamăgire, ceea ce e mai rău.<br><br>
+      Cina ta a fost <strong>redistribuită piloților</strong>. Piloții au mâncat foarte bine. Îți mulțumesc.<br><br>
+      <em style="color:rgba(184,149,106,0.8);">Noapte bună. Eventual.</em>
+    </div>
+    <button id="ignore-close-btn-5" onclick="closeIgnoreModal5()">AM ÎNȚELES. ÎMI PARE RĂU.</button>
+  </div>
+</div>
+
+<!-- Boarding Pass Print Modal -->
+<div id="bp-print-modal" style="position:fixed;inset:0;z-index:7000;background:rgba(5,8,20,0.97);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;display:none;padding:30px 20px;overflow-y:auto;">
+  <div style="display:flex;gap:12px;margin-bottom:24px;">
+    <button onclick="window.print()" style="background:rgba(184,149,106,0.2);border:1.5px solid #b8956a;color:#e8d5a3;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:3px;padding:10px 24px;text-transform:uppercase;border-radius:2px;">🖨 PRINTEAZĂ</button>
+    <button onclick="hideBoardingPassPrint()" style="background:transparent;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.6);cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:3px;padding:10px 24px;text-transform:uppercase;border-radius:2px;">✕ ÎNCHIDE</button>
+  </div>
+  <div class="bp-printable">
+    <div class="bpp-header">
+      <div class="bpp-airline">MYSTERY AIRLINES</div>
+      <div class="bpp-tagline">MA-2027 · BOARDING PASS</div>
+    </div>
+    <div class="bpp-body">
+      <div class="bpp-route">
+        <div class="bpp-airport"><div class="bpp-code">CLJ</div><div class="bpp-city">Cluj-Napoca</div><div class="bpp-label">ORIGIN</div></div>
+        <div class="bpp-arrow"><div class="bpp-plane-line">— — ✈ — —</div><div class="bpp-duration">16h 30min</div></div>
+        <div class="bpp-airport"><div class="bpp-code">CGK</div><div class="bpp-city">Jakarta</div><div class="bpp-label">DESTINATION</div></div>
+      </div>
+      <div class="bpp-divider-row"><div class="bpp-circle left"></div><div class="bpp-dash"></div><div class="bpp-circle right"></div></div>
+      <div class="bpp-details">
+        <div class="bpp-field"><div class="bpp-field-label">PASAGER 1</div><div class="bpp-field-value">BRADU / RAUL ANDREI</div></div>
+        <div class="bpp-field"><div class="bpp-field-label">PASAGER 2</div><div class="bpp-field-value">JURCA / VLAD ANDREI</div></div>
+        <div class="bpp-field"><div class="bpp-field-label">DATA</div><div class="bpp-field-value">IUN – AUG 2027</div></div>
+        <div class="bpp-field"><div class="bpp-field-label">ZBOR</div><div class="bpp-field-value">MA-2027-A</div></div>
+        <div class="bpp-field"><div class="bpp-field-label">CLASA</div><div class="bpp-field-value">MYSTERY</div></div>
+        <div class="bpp-field"><div class="bpp-field-label">AEROPORT</div><div class="bpp-field-value">SOEKARNO-HATTA INTL</div></div>
+      </div>
+      <div class="bpp-barcode-wrap" id="bpp-bc-1"></div>
+    </div>
+  </div>
+  <div style="height:20px;"></div>
+  <div class="bp-printable">
+    <div class="bpp-header">
+      <div class="bpp-airline">MYSTERY AIRLINES</div>
+      <div class="bpp-tagline">MA-2027 · BOARDING PASS</div>
+    </div>
+    <div class="bpp-body">
+      <div class="bpp-route">
+        <div class="bpp-airport"><div class="bpp-code">DPS</div><div class="bpp-city">Bali</div><div class="bpp-label">ORIGIN</div></div>
+        <div class="bpp-arrow"><div class="bpp-plane-line">— — ✈ — —</div><div class="bpp-duration">17h 20min</div></div>
+        <div class="bpp-airport"><div class="bpp-code">CLJ</div><div class="bpp-city">Cluj-Napoca</div><div class="bpp-label">DESTINATION</div></div>
+      </div>
+      <div class="bpp-divider-row"><div class="bpp-circle left"></div><div class="bpp-dash"></div><div class="bpp-circle right"></div></div>
+      <div class="bpp-details">
+        <div class="bpp-field"><div class="bpp-field-label">PASAGER 1</div><div class="bpp-field-value">BRADU / RAUL ANDREI</div></div>
+        <div class="bpp-field"><div class="bpp-field-label">PASAGER 2</div><div class="bpp-field-value">JURCA / VLAD ANDREI</div></div>
+        <div class="bpp-field"><div class="bpp-field-label">DATA</div><div class="bpp-field-value">IUN – AUG 2027</div></div>
+        <div class="bpp-field"><div class="bpp-field-label">ZBOR</div><div class="bpp-field-value">MA-2027-B</div></div>
+        <div class="bpp-field"><div class="bpp-field-label">CLASA</div><div class="bpp-field-value">MYSTERY</div></div>
+        <div class="bpp-field"><div class="bpp-field-label">AEROPORT</div><div class="bpp-field-value">NGURAH RAI INTL · BALI</div></div>
+      </div>
+      <div class="bpp-barcode-wrap" id="bpp-bc-2"></div>
+    </div>
+  </div>
+</div>
+
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+window.addEventListener('load', function() {
+
+// ── INTRO CANVAS BACKGROUND ──
+(function(){
+  var canvas=document.getElementById('intro-canvas');
+  if(!canvas)return;
+  var ctx=canvas.getContext('2d');
+  var W,H,stars=[];
+  function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;}
+  resize();window.addEventListener('resize',resize);
+  for(var i=0;i<180;i++){stars.push({x:Math.random(),y:Math.random(),r:Math.random()*1.5+0.3,speed:Math.random()*0.0003+0.0001,opacity:Math.random()});}
+  var t=0;
+  function drawBg(){
+    t+=0.008;
+    // Deep sky gradient
+    var grad=ctx.createRadialGradient(W*0.5,H*0.4,0,W*0.5,H*0.4,Math.max(W,H)*0.8);
+    grad.addColorStop(0,'#0d1535');
+    grad.addColorStop(0.4,'#0a0e1a');
+    grad.addColorStop(1,'#050810');
+    ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+    // Subtle aurora
+    var aur=ctx.createLinearGradient(0,H*0.2,W,H*0.6);
+    aur.addColorStop(0,'rgba(40,20,80,0)');
+    aur.addColorStop(0.3,'rgba(60,30,120,0.08)');
+    aur.addColorStop(0.6,'rgba(20,60,80,0.06)');
+    aur.addColorStop(1,'rgba(40,20,80,0)');
+    ctx.fillStyle=aur;ctx.fillRect(0,0,W,H);
+    // Stars
+    stars.forEach(function(s){
+      var x=((s.x+t*s.speed)%1)*W;
+      var y=s.y*H;
+      var op=0.3+0.7*Math.abs(Math.sin(t*2+s.x*10));
+      ctx.beginPath();ctx.arc(x,y,s.r,0,2*Math.PI);
+      ctx.fillStyle='rgba(255,255,255,'+op*0.8+')';ctx.fill();
+    });
+    // Plane trails
+    ctx.strokeStyle='rgba(184,149,106,0.06)';ctx.lineWidth=1;
+    for(var i=0;i<3;i++){
+      var px=((t*0.04+i*0.33)%1.2-0.1)*W;
+      var py=H*(0.25+i*0.15);
+      ctx.beginPath();ctx.moveTo(px-80,py);ctx.lineTo(px,py);ctx.stroke();
+    }
+    requestAnimationFrame(drawBg);
+  }
+  drawBg();
+})();
+
+var map = L.map('map',{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,keyboard:false}).setView([48,15],5);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:18,subdomains:'abcd',crossOrigin:true,keepBuffer:4,updateWhenIdle:false,updateWhenZooming:false}).addTo(map);
+
+// ── DATA ──
+var WORD_DATA = [
+  {id:'vacanta',km:50},{id:'insula',km:80},{id:'templu',km:120},
+  {id:'ocean',km:290},{id:'dragon',km:340},{id:'vulcan',km:510},
+  {id:'aventura',km:9200}
+];
+// Zone thresholds mapped to SVG regions
+var ZONES = [
+  {km:300,  name:'Europa',         regions:['rgn-europe']},
+  {km:800,  name:'Africa de Nord', regions:['rgn-nafr']},
+  {km:1500, name:'Orient Mijlociu',regions:['rgn-me']},
+  {km:3000, name:'Africa',         regions:['rgn-safr']},
+  {km:4500, name:'Americi',        regions:['rgn-amer','rgn-sam']},
+  {km:5500, name:'Asia Centrală',  regions:['rgn-cas']},
+  {km:6500, name:'Asia de Sud',    regions:['rgn-sas']},
+  {km:8000, name:'Asia de Est',    regions:['rgn-eas']},
+  {km:9500, name:'Asia de Sud-Est',regions:['rgn-seas','rgn-oce']}
+];
+var MAX_KM=10500;
+var wordCount=0; // track word order
+
+var flightRoute=[
+  {coords:[46.77,23.59],name:'Cluj-Napoca',  zoom:6},
+  {coords:[41.01,28.97],name:'Istanbul',     zoom:5},
+  {coords:[36.5, 28.5], name:'???',          zoom:5},
+  {coords:[30.0, 31.2], name:'???',          zoom:5},  // Cairo
+  {coords:[23.5, 58.5], name:'???',          zoom:4},  // Muscat
+  {coords:[19.07,72.87],name:'???',          zoom:5},  // Mumbai
+  {coords:[16.0, 97.0], name:'???',          zoom:4},  // Myanmar
+  {coords:[21.0,105.8], name:'???',          zoom:5},  // Hanoi
+  {coords:[10.8,106.7], name:'???',          zoom:5},  // Ho Chi Minh
+  {coords:[1.35,103.82],name:'???',          zoom:5},  // Singapore
+  {coords:[-3.5, 105.0],name:'???',          zoom:5},  // Sumatra
+  {coords:[-6.2, 106.81],name:'Jakarta',     zoom:7}   // Jakarta - final
+];
+var TOTAL_FLIGHT_MS=16.5*60*1000;
+var flightSpeedMult = 1;
+
+var enteredWords=[],totalKm=0,wordsLeft=4,unlockedZones=[];
+var planeMarker=null, spinCount=0;
+
+// ── INIT GAME PANEL ──
+function initGamePanel(){
+
+  var bc=document.getElementById('barcode');bc.innerHTML='';
+  for(var i=0;i<80;i++){var b=document.createElement('div');b.className='bp-bar';b.style.height=(6+Math.random()*20)+'px';bc.appendChild(b);}
+  document.getElementById('game-panel').classList.add('show');document.body.classList.add('panel-active');
+  // No autofocus — avoids keyboard popping up on mobile
+}
+
+// ── WORD SUBMIT ──
+window.submitWord = function submitWord(){
+  hideKeyboard();
+  if(wordsLeft<=0)return;
+  var inp=document.getElementById('word-input');
+  var val=inp.value.trim().toLowerCase().replace(/\s+/g,' ');
+  if(enteredWords.indexOf(val)>=0){showMsg('Ai mai introdus deja acest cuvânt!','#c84a4a');inp.classList.add('wrong');setTimeout(function(){inp.classList.remove('wrong');},400);return;}
+  var found=null;
+  WORD_DATA.forEach(function(w){if(w.id===val)found=w;});
+  if(!found){inp.classList.add('wrong');setTimeout(function(){inp.classList.remove('wrong');},400);showMsg('Cuvânt nerecunoscut.','#c84a4a');return;}
+  inp.value='';inp.classList.add('correct');setTimeout(function(){inp.classList.remove('correct');},600);
+  enteredWords.push(val);totalKm+=found.km;wordsLeft--;
+  var pct=Math.min(totalKm/MAX_KM*100,100);
+  document.getElementById('baro-fill').style.width=pct+'%';
+  document.getElementById('km-display').textContent=totalKm.toLocaleString()+' mile';
+  wordCount++;
+  // Force Orient Mijlociu unlock on 2nd word regardless of km
+  var effectiveKm = totalKm;
+  if(wordCount>=2 && totalKm < 1500) effectiveKm = 1500;
+
+  // Update map regions
+  var currentZoneName='';
+  var allUnlocked=true;
+  ZONES.forEach(function(z){
+    if(effectiveKm>=z.km){
+      z.regions.forEach(function(rid){
+        var el=document.getElementById(rid);
+        if(el){el.classList.add('unlocked');el.classList.remove('current');}
+      });
+      currentZoneName=z.name;
+      if(unlockedZones.indexOf(z.name)<0)unlockedZones.push(z.name);
+    } else {
+      allUnlocked=false;
+    }
+  });
+
+  // Mark next region as "current" (glowing)
+  var foundFirst=false;
+  ZONES.forEach(function(z){
+    if(effectiveKm>=z.km)foundFirst=true;
+    else if(foundFirst && !foundFirst.done){
+      z.regions.forEach(function(rid){
+        var el=document.getElementById(rid);
+        if(el)el.classList.add('current');
+      });
+      foundFirst={done:true};
+    }
+  });
+
+  // If aventura (9200km) unlock all
+  if(found.km>=9000){
+    ZONES.forEach(function(z){
+      z.regions.forEach(function(rid){
+        var el=document.getElementById(rid);
+        if(el){el.classList.remove('current');el.classList.add('unlocked','all-unlocked');}
+      });
+    });
+    currentZoneName='Asia de Sud-Est';
+    document.getElementById('map-zone-label').textContent='🌍 TOATE REGIUNILE DEBLOCATE!';
+    document.getElementById('map-zone-label').classList.add('lit');
+  } else if(currentZoneName){
+    document.getElementById('map-zone-label').textContent='✓ '+currentZoneName+' deblocată';
+    document.getElementById('map-zone-label').classList.add('lit');
+    setTimeout(function(){document.getElementById('map-zone-label').classList.remove('lit');}, 2000);
+  }
+
+  if(currentZoneName){
+    document.getElementById('dest-display').textContent=currentZoneName.toUpperCase();
+    document.getElementById('dest-display').style.color='#4a8a4a';
+    document.getElementById('baro-zone').textContent='Poți ajunge în: '+currentZoneName;
+  }
+  document.getElementById('words-counter').textContent=(4-wordsLeft)+' / 4';
+  document.getElementById('input-status').textContent='CUVÂNT '+(enteredWords.length<4?enteredWords.length+1:4)+' DIN 4';
+  var chip=document.createElement('div');chip.className='bp-used-chip';chip.textContent=val.toUpperCase()+' +'+found.km.toLocaleString()+' mile';
+  document.getElementById('used-words').appendChild(chip);
+
+  // Dialog miles - scurt si sec
+  var milesMessages = [
+    'Felicitări. Ai câștigat {km} mile. Continui.',
+    'Confirmat. {km} mile adăugate în cont. Nu te entuziasma.',
+    '{km} mile. Nici prea mult, nici prea puțin. Sau poate prea puțin.',
+    'Tranzacție procesată. {km} mile. Mulțumim pentru participare.',
+    'Ai câștigat {km} mile. Mystery Airlines îți urează succes în continuare.',
+    '{km} mile creditate. Destinația rămâne, desigur, misterioasă.',
+    'Impresionant. {km} mile. Sau nu. Depinde de perspectivă.',
+  ];
+  var msg = milesMessages[Math.floor(Math.random()*milesMessages.length)].replace('{km}', found.km.toLocaleString());
+  showMilesDialog(found.km, msg);
+
+  if(wordsLeft===0){
+    document.getElementById('input-status').textContent='TOATE CUVINTELE INTRODUSE';
+    document.getElementById('word-input').disabled=true;
+    document.getElementById('word-submit').disabled=true;
+    // Store bonus - va apărea după ce închide ultimul dialog de mile
+    var bonus = Math.max(0, 9500 - totalKm + 200);
+    window._pendingBonus = bonus;
+    if(!bonus || bonus <= 0){
+      document.getElementById('launch-btn').style.display='block';
+      document.getElementById('baro-zone').textContent='Ești pregătit?';
+    }
+  } // end if(wordsLeft===0)
+} // end submitWord
+
+function showMsg(text,color){
+  var el=document.getElementById('win-text');
+  el.textContent=text;el.style.color=color;el.classList.add('show');
+  setTimeout(function(){el.classList.remove('show');},2200);
+}
+
+document.getElementById('word-submit').addEventListener('click',submitWord);
+document.getElementById('word-input').addEventListener('keydown',function(e){if(e.key==='Enter')submitWord();});
+
+document.getElementById('launch-btn').addEventListener('click',function(){
+  document.getElementById('game-panel').classList.remove('show');document.body.classList.remove('panel-active');
+  setTimeout(showRoulette,600);
+});
+
+
+
+// ── ROULETTE ──
+var rouletteAngle=0;
+
+function buildRouletteSegments(){
+  // Always 12 segments for visual density - mix of fake destinations + special ones
+  var fakeDestinations = [
+    'DUBAI','MALDIVE','MAROC','ISLANDA','MEXIC','GRECIA',
+    'BORA BORA','THAILAND','MALDIVE','JAPONIA'
+  ];
+  var segs=[];
+  // Add fake destinations to fill wheel
+  fakeDestinations.forEach(function(d,i){
+    segs.push({label:d, color: i%2===0 ? '#1a2a3a' : '#2a3a4a'});
+  });
+  segs.push({label:'MYSTERY\nDESTINATION',color:'#1a1500',textColor:'#f0c060',bold:true});
+  segs.push({label:'TRY\nAGAIN',color:'#2a0a0a',textColor:'#e86060'});
+  return segs;
+}
+
+function drawRoulette(angle){
+  var canvas=document.getElementById('roulette-canvas');
+  var ctx=canvas.getContext('2d');
+  var cx=220,cy=220,r=210;
+  var segs=buildRouletteSegments();
+  var n=segs.length;
+  var arc=2*Math.PI/n;
+  ctx.clearRect(0,0,440,440);
+  segs.forEach(function(s,i){
+    var start=angle+i*arc-Math.PI/2;
+    var end=start+arc;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,start,end);ctx.closePath();
+    ctx.fillStyle=s.color||'#2a3a4a';ctx.fill();
+    ctx.strokeStyle='rgba(184,149,106,0.4)';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.save();ctx.translate(cx,cy);ctx.rotate(start+arc/2);
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillStyle=s.textColor||'#e8d5a3';
+    ctx.font=(s.bold?'bold ':'')+'12px Share Tech Mono, monospace';
+    var lines=s.label.split('\n');
+    lines.forEach(function(line,li){
+      ctx.fillText(line,r*0.65,(li-(lines.length-1)/2)*15);
+    });
+    ctx.restore();
+  });
+  // Outer ring
+  ctx.beginPath();ctx.arc(cx,cy,r,0,2*Math.PI);ctx.strokeStyle='rgba(184,149,106,0.8)';ctx.lineWidth=4;ctx.stroke();
+  // Center circle - dark with gold border
+  ctx.beginPath();ctx.arc(cx,cy,30,0,2*Math.PI);ctx.fillStyle='#0a0e1a';ctx.fill();ctx.strokeStyle='#b8956a';ctx.lineWidth=3;ctx.stroke();
+  // Center plane - white
+  ctx.fillStyle='#ffffff';
+  ctx.font='bold 22px Arial';
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  ctx.fillText('✈',cx,cy);
+}
+
+function getSegmentAtTop(angle){
+  var segs=buildRouletteSegments();
+  var n=segs.length;
+  var arc=2*Math.PI/n;
+  // Top = -PI/2, find which segment the needle (top) points to
+  var normalized=(((-angle+Math.PI/2)%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+  var idx=Math.floor(normalized/arc)%n;
+  return segs[idx];
+}
+
+function showRoulette(){
+  drawRoulette(0);
+  document.getElementById('roulette-overlay').classList.add('show');
+}
+
+document.getElementById('spin-btn').addEventListener('click',function(){
+  spinCount++;
+  var btn=document.getElementById('spin-btn');
+  btn.disabled=true;
+  document.getElementById('spin-result').textContent='';
+
+  var segs=buildRouletteSegments();
+  var n=segs.length;
+  var arc=2*Math.PI/n;
+
+  // Find index of target segment
+  var targetIdx;
+  if(spinCount===1){
+    targetIdx=segs.findIndex(function(s){return s.label.indexOf('TRY')>=0;});
+  } else {
+    targetIdx=segs.findIndex(function(s){return s.label.indexOf('MYSTERY')>=0;});
+  }
+
+  // Needle is at top of canvas = angle 0 in canvas coords = -PI/2 in our drawing system
+  // Segment i starts at: rouletteAngle + i*arc - PI/2
+  // Needle points to top = drawing angle -PI/2
+  // For needle to point to center of segment targetIdx:
+  // rouletteAngle + targetIdx*arc + arc/2 - PI/2 = -PI/2  (mod 2PI)
+  // rouletteAngle = -targetIdx*arc - arc/2  (mod 2PI)
+  var targetAngle = -targetIdx*arc - arc/2;
+  // Normalize targetAngle to be in valid range
+  targetAngle = ((targetAngle % (2*Math.PI)) + 2*Math.PI) % (2*Math.PI);
+  // Current angle normalized
+  var curNorm = ((rouletteAngle % (2*Math.PI)) + 2*Math.PI) % (2*Math.PI);
+  // We spin clockwise (angle increases negatively in our system = wheel goes counterclockwise visually)
+  // Actually let's spin counterclockwise: angle decreases
+  var extraSpins = spinCount===1 ? 12 : 8;
+  var delta = targetAngle - curNorm;
+  if(delta > 0) delta -= 2*Math.PI; // ensure we go full negative direction
+  var totalDelta = delta - extraSpins*2*Math.PI;
+  var duration=spinCount===1?12000:14000;
+  var startAngle=rouletteAngle;
+  var startTime=performance.now();
+
+  function animSpin(now){
+    var t=Math.min((now-startTime)/duration,1);
+    var ease;
+    // Spin 2 fake-out: slow dramatically near Japonia at ~97-99.5% of animation
+    if(spinCount===2 && t > 0.965 && t < 0.995){
+      var localT = (t - 0.965) / 0.03;
+      // Strong slow-down then resume: sinusoidal dip in progress
+      var dip = Math.sin(localT * Math.PI) * 0.04;
+      ease = (1 - Math.pow(1-t, 4)) - dip;
+    } else {
+      ease = 1-Math.pow(1-t,4);
+    }
+    var angle=startAngle+totalDelta*ease;
+    rouletteAngle=angle;
+    drawRoulette(angle);
+    if(t<1){requestAnimationFrame(animSpin);}
+    else{
+      rouletteAngle=targetAngle;
+      drawRoulette(targetAngle);
+      var seg=segs[targetIdx];
+      var resEl=document.getElementById('spin-result');
+      if(spinCount===1){
+        resEl.style.color='#c84a4a';
+        resEl.textContent='APROAPE... dar nu chiar!';
+        document.getElementById('rl-sub').textContent='Atât de aproape. O ultimă șansă.';
+        setTimeout(function(){btn.disabled=false;}, 1000);
+      } else {
+        resEl.style.color='#b8956a';
+        resEl.textContent='MYSTERY DESTINATION!';
+        setTimeout(function(){
+          document.getElementById('roulette-overlay').classList.remove('show');
+          setTimeout(showMysteryModal, 600);
+        },2000);
+      }
+    }
+  }
+  requestAnimationFrame(animSpin);
+});
+
+// ── MYSTERY DESTINATION MODAL ──
+function showMysteryModal(){
+  var modal = document.getElementById('mystery-modal');
+  modal.classList.add('show');
+  startFireworks();
+  }
+
+window.closeMysteryModal = function(){
+  stopFireworks();
+  document.getElementById('mystery-modal').classList.remove('show');
+  setTimeout(showMapExploration, 600);
+};
+
+// Fireworks
+var fwCanvas, fwCtx, fwParticles = [], fwAnimId = null;
+
+function startFireworks(){
+  fwCanvas = document.getElementById('fireworks-canvas');
+  var card = document.getElementById('mystery-modal-card');
+  fwCanvas.width = card.offsetWidth;
+  fwCanvas.height = card.offsetHeight;
+  fwCtx = fwCanvas.getContext('2d');
+  fwParticles = [];
+  function launchBurst(){
+    var cx = Math.random() * fwCanvas.width;
+    var cy = Math.random() * fwCanvas.height * 0.5;
+    var colors = ['#b8956a','#f0c060','#e05050','#60b0e0','#a0e060','#e080c0'];
+    var color = colors[Math.floor(Math.random()*colors.length)];
+    for(var i=0;i<28;i++){
+      var angle = (i/28)*Math.PI*2;
+      var speed = 2+Math.random()*3;
+      fwParticles.push({x:cx,y:cy,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,alpha:1,color:color,r:Math.random()*2+1.5});
+    }
+  }
+  var burstTimer = setInterval(launchBurst, 400);
+  fwCanvas._burstTimer = burstTimer;
+  launchBurst();
+
+  function fwFrame(){
+    fwCtx.clearRect(0,0,fwCanvas.width,fwCanvas.height);
+    fwParticles.forEach(function(p){
+      p.x+=p.vx; p.y+=p.vy; p.vy+=0.05; p.alpha-=0.018;
+      fwCtx.globalAlpha=Math.max(0,p.alpha);
+      fwCtx.beginPath();
+      fwCtx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      fwCtx.fillStyle=p.color;
+      fwCtx.fill();
+    });
+    fwCtx.globalAlpha=1;
+    fwParticles=fwParticles.filter(function(p){return p.alpha>0;});
+    fwAnimId=requestAnimationFrame(fwFrame);
+  }
+  fwFrame();
+}
+
+function stopFireworks(){
+  if(fwAnimId) cancelAnimationFrame(fwAnimId);
+  if(fwCanvas && fwCanvas._burstTimer) clearInterval(fwCanvas._burstTimer);
+  fwParticles=[];
+}
+
+// ── IGNORE CREW MODAL ──
+window.showIgnoreModal = function showIgnoreModal(){
+  var audio = document.getElementById('announcement-audio');
+  if(audio){ audio.pause(); }
+  document.getElementById('ignore-modal').classList.add('show');
+};
+
+window.showIgnoreModal2 = function(){
+  var cateringAudio = document.getElementById('catering-audio');
+  if(cateringAudio){ cateringAudio.pause(); }
+  document.getElementById('ignore-modal-2').classList.add('show');
+};
+
+window.showIgnoreModal3 = function(){
+  var landingAudio = document.getElementById('landing-audio');
+  if(landingAudio){ landingAudio.pause(); }
+  document.getElementById('ignore-modal-3').classList.add('show');
+};
+
+window.closeIgnoreModal2 = function(){
+  document.getElementById('ignore-modal-2').classList.remove('show');
+  // Replay catering audio from start
+  var cateringAudio = document.getElementById('catering-audio');
+  var audioModal = document.getElementById('catering-audio-modal');
+  audioModal.classList.add('show');
+  cateringAudio.currentTime = 0;
+  cateringAudio.play().catch(function(){});
+  function openMenu(){
+    audioModal.classList.remove('show');
+    document.getElementById('catering-modal').classList.add('show');
+  }
+  cateringAudio.onended = openMenu;
+  };
+
+window.closeIgnoreModal3 = function(){
+  document.getElementById('ignore-modal-3').classList.remove('show');
+  // Replay landing audio from start
+  var landingAudio = document.getElementById('landing-audio');
+  var landingModal = document.getElementById('landing-modal');
+  landingModal.classList.add('show');
+  landingAudio.currentTime = 0;
+  landingAudio.play().catch(function(){});
+  landingAudio.onended = function(){
+    landingModal.classList.remove('show');
+  };
+  document.getElementById('landing-skip').onclick = function(){ window.showIgnoreModal3(); };
+};
+
+window.closeIgnoreModal = function(){
+  document.getElementById('ignore-modal').classList.remove('show');
+  // They still have to listen — restart the audio announcement flow
+  var audio = document.getElementById('announcement-audio');
+  audio.pause();
+  audio.currentTime = 0;
+  audio.onended = null;
+  // Reset flag so closeAndContinue works again
+  audioAnnouncementShown = false;
+  flightSequenceStarted = false;
+  // Reopen the audio modal properly
+  showAudioAnnouncement();
+};
+
+// ── RUNWAY ──
+var audioAnnouncementShown = false;
+var flightSequenceStarted = false;
+var landingAnnouncementShown = false;
+
+function showAudioAnnouncement(){
+  // Prevent double-call under any circumstances
+  if(flightSequenceStarted) return;
+  flightSequenceStarted = true;
+  if(audioAnnouncementShown) return;
+  audioAnnouncementShown = true;
+
+  var modal = document.getElementById('audio-modal');
+  var audio = document.getElementById('announcement-audio');
+
+  // Reset audio bars
+  document.querySelectorAll('.audio-bar').forEach(function(b){b.classList.remove('stopped');});
+
+  modal.classList.add('show');
+
+  // Try to play audio
+  audio.currentTime = 0;
+  audio.play().catch(function(){
+    document.querySelector('.audio-sub').textContent = 'Apasă play pentru a asculta anunțul.';
+  });
+
+  function closeAndContinue(){
+    if(!audioAnnouncementShown) return;
+    audioAnnouncementShown = false;
+    modal.classList.remove('show');
+    setTimeout(showSafetyBriefing, 400);
+  }
+
+  // Stop bars and close when audio ends
+  audio.onended = closeAndContinue;
+  
+  // Skip button
+  document.getElementById('audio-skip').onclick = function(){
+    showIgnoreModal();
+  };
+}
+
+var checkedItems = [false, false, false, false];
+
+window.toggleCheck = function(idx){
+  checkedItems[idx] = !checkedItems[idx];
+  var item = document.getElementById('chk-'+idx);
+  var box = document.getElementById('chkbox-'+idx);
+  if(checkedItems[idx]){
+    item.classList.add('checked');
+    box.textContent = '✓';
+  } else {
+    item.classList.remove('checked');
+    box.textContent = '';
+  }
+  var allChecked = checkedItems.every(function(v){return v;});
+  var btn = document.getElementById('checklist-confirm');
+  if(allChecked){
+    btn.classList.add('ready');
+    btn.disabled = false;
+  } else {
+    btn.classList.remove('ready');
+    btn.disabled = true;
+  }
+};
+
+window.confirmChecklist = function(){
+  document.getElementById('checklist-overlay').classList.remove('show');
+  setTimeout(showRunway, 400);
+};
+
+function showSafetyBriefing(){
+  // Reset checklist
+  checkedItems = [false,false,false,false];
+  for(var i=0;i<4;i++){
+    var item=document.getElementById('chk-'+i);
+    var box=document.getElementById('chkbox-'+i);
+    if(item) item.classList.remove('checked');
+    if(box) box.textContent='';
+  }
+  var btn=document.getElementById('checklist-confirm');
+  if(btn){btn.classList.remove('ready');btn.disabled=true;}
+  document.getElementById('checklist-overlay').classList.add('show');
+}
+
+function showRunway(){
+  document.getElementById('runway-overlay').classList.add('show');
+  var plane=document.getElementById('runway-plane');
+  var status=document.getElementById('rw-status');
+  var bar=document.getElementById('runway-bar');
+
+  // Runway animation: plane spins on tarmac then takes off toward ME
+  var steps=[
+    {rot:0,    status:'Motoarele pornesc...',              dur:2000, barW:8,  ease:true, turbo:true},
+    {rot:-40,  status:'Verificare sisteme...',             dur:2000, barW:20, ease:true},
+    {rot:50,   status:'Selectare rută...',                 dur:2000, barW:32, ease:true},
+    {rot:-25,  status:'Care e direcția?...',               dur:1800, barW:44, ease:true},
+    {rot:60,   status:'Hmm...',                            dur:1800, barW:56, ease:true},
+    {rot:-10,  status:'Aproape gata...',                   dur:1500, barW:68, ease:true},
+    {rot:35,   status:'Recalculare...',                    dur:1500, barW:76, ease:true},
+    {rot:45,   status:'Confirmat. DECOLARE IMINENTĂ!',     dur:1500, barW:100,ease:true},
+    {rot:45,   status:'⚡ DECOLARE!',                       dur:800,  barW:100,ease:false}
+  ];
+
+  var step=0;
+  function doStep(){
+    if(step>=steps.length){
+      // Takeoff animation
+      plane.style.transition='transform 1.5s ease-in, opacity 1s ease-in 0.5s';
+      plane.style.transform='rotate(45deg) translate(300px,-200px) scale(0.1)';
+      plane.style.opacity='0';
+      setTimeout(function(){
+        document.getElementById('runway-overlay').classList.remove('show');
+        setTimeout(startFlight, 800);
+      },1800);
+      return;
+    }
+    var s=steps[step++];
+    if(s.ease) plane.style.transition='transform '+Math.min(s.dur*0.8,1200)+'ms ease-in-out';
+    plane.style.transform='rotate('+s.rot+'deg)';
+    status.textContent=s.status;
+    bar.style.width=s.barW+'%';
+    setTimeout(doStep, T(s.dur));
+  }
+  doStep();
+}
+
+// ── MAP EXPLORATION after roulette ──
+var explorationSteps = [
+  {coords:[51.5,-0.1],  zoom:5,  dur:2.5},               // UK
+  {coords:[48.8,2.3],   zoom:6,  dur:2},                  // Paris
+  {coords:[40.4,-3.7],  zoom:5,  dur:2},                  // Spania
+  {coords:[41.9,12.5],  zoom:6,  dur:2},                  // Italia
+  {coords:[32.7,-17.0], zoom:4,  dur:2},                  // Aproape Madeira
+  {coords:[32.7,-17.0], zoom:9,  dur:3,  pause:2500},     // Zoom IN Madeira - stăm
+  {coords:[45,10],      zoom:4,  dur:3},                  // Zoom OUT
+  {coords:[60.5,8.5],   zoom:6,  dur:2.5},                // Norvegia
+  {coords:[64.9,-19.0], zoom:7,  dur:3,  pause:2000},     // Islanda - stăm
+  {coords:[72,-40],     zoom:5,  dur:2.5},                // Groenlanda
+  {coords:[55,15],      zoom:4,  dur:2},                  // inapoi Europa
+  {coords:[36.8,10.2],  zoom:6,  dur:2.5},                // Maroc/Tunisia
+  {coords:[37.7,-25.7], zoom:8,  dur:3,  pause:2000},     // Azore - stăm
+  {coords:[40,45],      zoom:6,  dur:3},                  // Georgia/Armenia
+  {coords:[9,38],       zoom:5,  dur:2.5},                // Africa
+  {coords:[23,-80],     zoom:6,  dur:2.5, pause:1500},    // Cuba
+  {coords:[28,80],      zoom:4,  dur:3},                  // India/Asia Sud
+  {coords:[19,72],      zoom:6,  dur:2.5, pause:1500},    // Mumbai
+  {coords:[35,138],     zoom:5,  dur:3,  pause:1500},     // Japonia
+  {coords:[37,127],     zoom:6,  dur:2},                  // Coreea
+  {coords:[21,106],     zoom:6,  dur:2.5, pause:1500},    // Vietnam
+  {coords:[12,122],     zoom:5,  dur:2.5, pause:1500},    // Filipine
+  {coords:[25,80],      zoom:3,  dur:3},                  // Zoom out Asia
+  {coords:[46.77,23.59],zoom:5,  dur:4}                   // Inapoi Cluj
+];
+var exploIdx2=0;
+
+var searchMessages = [
+  'Se caută zboruri disponibile...',
+  'Se analizează rute posibile...',
+  'Verificăm aici...',
+  'HMMMM...',
+  'AICI????',
+  'NOPE...',
+  'ASTA CE-i??',
+  'IA SĂ VĂD AICI...',
+  'Se aliniază planetele...',
+  'SE COLECTEAZĂ DATELE...',
+  'PRIMA ÎNCERCARE!',
+  'NEREUȘIT!',
+  'CE DRACU ARE??',
+  'AH, GATA!',
+  'Se calculează ruta optimă...',
+  'DESTINAȚIE SELECTATĂ!!!',
+];
+var searchMsgIdx = 0;
+var searchTimer = null;
+
+function showMapExploration(){
+  map.flyTo([48,15],4,{duration:2,easeLinearity:0.3});
+  exploIdx2=0;
+  // Start search bar
+  var bar = document.getElementById('search-bar');
+  bar.classList.add('show');
+  document.getElementById('sb-fill').style.width='0%';
+  searchMsgIdx=0;
+  function nextMsg(){
+    if(searchMsgIdx>=searchMessages.length) return;
+    document.getElementById('sb-text').textContent=searchMessages[searchMsgIdx];
+    var pct = Math.min((searchMsgIdx/searchMessages.length)*100, 95);
+    document.getElementById('sb-fill').style.width=pct+'%';
+    searchMsgIdx++;
+    searchTimer=setTimeout(nextMsg, 3200);
+  }
+  nextMsg();
+  setTimeout(runExploration2, 2200);
+  document.getElementById('dev-skip').classList.add('show');
+}
+
+function runExploration2(){
+  if(exploIdx2>=explorationSteps.length){
+    // Back at Cluj - show runway
+    // Finish search bar
+    if(searchTimer)clearTimeout(searchTimer);
+    document.getElementById('sb-fill').style.width='100%';
+    document.getElementById('sb-text').textContent='✓ Destinație confirmată! Pregătire de decolare...';
+    document.getElementById('dev-skip').classList.remove('show');
+    setTimeout(function(){document.getElementById('search-bar').classList.remove('show');},2000);
+    map.flyTo([46.77,23.59],12,{duration:3,easeLinearity:0.25});
+    setTimeout(function(){
+      if(planeMarker){ map.removeLayer(planeMarker); planeMarker=null; }
+      var pi=L.divIcon({className:'',html:'<div class="plane-icon">✈</div>',iconSize:[28,28],iconAnchor:[14,14]});
+      planeMarker=L.marker([46.77,23.59],{icon:pi}).addTo(map);
+      setTimeout(showAudioAnnouncement, 1200);
+    },3200);
+    return;
+  }
+  var s=explorationSteps[exploIdx2++];
+  map.flyTo(s.coords,s.zoom,{duration:s.dur,easeLinearity:0.3});
+  setTimeout(runExploration2, T(s.dur*1000+(s.pause||0)+400));
+}
+
+// ── MAP + FLIGHT ──
+function startFlight(){
+  if(!planeMarker){
+    var pi=L.divIcon({className:'',html:'<div class="plane-icon">✈</div>',iconSize:[28,28],iconAnchor:[14,14]});
+    planeMarker=L.marker([46.77,23.59],{icon:pi}).addTo(map);
+  }
+  // Fixed zoom 4 — shows all countries clearly from Romania to Indonesia
+  map.setView([46.77,23.59], 5, {animate:false});
+  setTimeout(function(){
+    document.getElementById('flight-bar').classList.add('show');
+    animateLeg(0);
+  }, 500);
+}
+
+function distance(a,b){var dl=b[0]-a[0],dg=b[1]-a[1];return Math.sqrt(dl*dl+dg*dg);}
+function totalRouteDist(){var d=0;for(var i=0;i<flightRoute.length-1;i++)d+=distance(flightRoute[i].coords,flightRoute[i+1].coords);return d;}
+
+window.animateLeg = function animateLeg(legIdx){
+  if(legIdx>=flightRoute.length-1){arrivedIndonesia();return;}
+  var from=flightRoute[legIdx],to=flightRoute[legIdx+1];
+  var td=totalRouteDist(),ld=distance(from.coords,to.coords);
+  var dur=Math.max(TOTAL_FLIGHT_MS*(ld/td), 20000); // minim 20 sec per leg
+  document.getElementById('flight-from-to').textContent='CLJ → ???';
+  document.getElementById('flight-progress-bar').style.width=(legIdx/(flightRoute.length-1)*100)+'%';
+
+  var elapsed = 0;
+  var lastNow = null;
+  var frameCount = 0;
+  function frame(now){
+    if(lastNow === null) lastNow = now;
+    elapsed += (now - lastNow) * flightSpeedMult;
+    lastNow = now;
+    var t = Math.min(elapsed / dur, 1);
+    var lat=from.coords[0]+(to.coords[0]-from.coords[0])*t;
+    var lng=from.coords[1]+(to.coords[1]-from.coords[1])*t;
+    if(planeMarker) planeMarker.setLatLng([lat,lng]);
+    // Pan map every 2 frames, fixed zoom, no animation
+    frameCount++;
+    if(frameCount % 2 === 0){
+      map.panTo([lat, lng], {animate:false, noMoveStart:true});
+    }
+    var dLat = to.coords[0]-from.coords[0];
+    var dLng = to.coords[1]-from.coords[1];
+    var angle = Math.atan2(-dLat, dLng) * 180 / Math.PI;
+    var pe=document.querySelector('.plane-icon');
+    if(pe) pe.style.transform='rotate('+angle+'deg)';
+    var remLeg = Math.max(0, (dur - elapsed) / flightSpeedMult);
+    var remTotal = remLeg;
+    for(var i=legIdx+1;i<flightRoute.length-1;i++)remTotal += TOTAL_FLIGHT_MS*(distance(flightRoute[i].coords,flightRoute[i+1].coords)/td) / flightSpeedMult;
+    var mins=Math.floor(remTotal/60000),secs=Math.floor((remTotal%60000)/1000);
+    // ETA hidden
+    if(t<1) requestAnimationFrame(frame);
+    else setTimeout(function(){
+      if(legIdx===2){
+        showBreakfastModal();
+        return;
+      }
+      if(legIdx===4){
+        showCateringModal();
+        return;
+      }
+      if(legIdx===6){
+        showDinnerModal();
+        return;
+      }
+      animateLeg(legIdx+1);
+    }, 0);
+  }
+
+  // Show landing modal when reaching Singapore (leg 9)
+  if(legIdx === 9){
+    var landingAudio = document.getElementById('landing-audio');
+    landingAudio.currentTime = 0;
+    landingAudio.play().catch(function(){});
+    document.getElementById('landing-modal').classList.add('show');
+    document.getElementById('landing-skip').onclick = function(){
+      window.showIgnoreModal3();
+    };
+    landingAudio.onended = function(){
+      document.getElementById('landing-modal').classList.remove('show');
+    };
+  }
+
+  requestAnimationFrame(frame);
+}
+
+// ── CATERING ──
+var cateringDismissed = [false, false, false];
+var cateringWarnings = [
+  '⚠ Ne pare rău. Micii s-au epuizat.\nUltimele porții au fost servite în rândul din față.',
+  '⚠ Ne pare rău. Sarmalele nu mai sunt disponibile.\nAm subestimat cererea. Ne cerem scuze.',
+  '⚠ Ne pare rău. Wagyu A5 s-a epuizat.\nDe asemenea și cartoful cu trufe, reducția și fulgii de aur.\nA rămas baza.'
+];
+
+function showCateringModal(){
+  cateringDismissed = [false, false, false];
+  ['cat-item-0','cat-item-1','cat-item-2'].forEach(function(id){
+    var el = document.getElementById(id);
+    el.classList.remove('unavailable');
+    var tag = el.querySelector('.catering-unavailable-tag');
+    if(tag) tag.remove();
+  });
+  document.getElementById('cat-bread').classList.remove('show');
+  document.getElementById('catering-accept-btn').style.display = 'none';
+  document.getElementById('catering-warning').classList.remove('show');
+  document.getElementById('catering-warning').textContent = '';
+
+  // Show audio modal first
+  var audioModal = document.getElementById('catering-audio-modal');
+  var cateringAudio = document.getElementById('catering-audio');
+  audioModal.classList.add('show');
+  cateringAudio.currentTime = 0;
+  cateringAudio.play().catch(function(){});
+
+  function openMenu(){
+    audioModal.classList.remove('show');
+    document.getElementById('catering-modal').classList.add('show');
+  }
+  cateringAudio.onended = openMenu;
+  }
+
+window.selectCateringItem = function(idx){
+  if(cateringDismissed[idx]) return;
+  cateringDismissed[idx] = true;
+
+  var item = document.getElementById('cat-item-'+idx);
+  item.classList.add('unavailable');
+  if(!item.querySelector('.catering-unavailable-tag')){
+    var tag = document.createElement('div');
+    tag.className = 'catering-unavailable-tag';
+    tag.textContent = 'Epuizat';
+    item.appendChild(tag);
+  }
+  var price = item.querySelector('.catering-item-price');
+  if(price) price.style.display = 'none';
+
+  var warning = document.getElementById('catering-warning');
+  warning.style.whiteSpace = 'pre-line';
+  warning.textContent = cateringWarnings[idx];
+  warning.classList.add('show');
+
+  var allGone = cateringDismissed.every(function(v){return v;});
+  if(allGone){
+    setTimeout(function(){
+      document.getElementById('catering-continue-btn').style.display = 'block';
+    }, 600);
+  }
+};
+
+window.revealBread = function(){
+  document.getElementById('catering-continue-btn').style.display = 'none';
+  var warning = document.getElementById('catering-warning');
+  warning.classList.remove('show');
+  setTimeout(function(){
+    document.getElementById('cat-bread').classList.add('show');
+    document.getElementById('catering-accept-btn').style.display = 'block';
+    warning.textContent = 'Vă oferim cu mândrie ultima noastră opțiune disponibilă la bord: o chiflă. O singură chiflă. Intactă.';
+    warning.style.color = 'rgba(184,149,106,0.9)';
+    warning.classList.add('show');
+  }, 400);
+};
+
+window.acceptBread = function(){
+  document.getElementById('catering-modal').classList.remove('show');
+  var cateringAudio = document.getElementById('catering-audio');
+  if(cateringAudio){ cateringAudio.pause(); cateringAudio.currentTime=0; }
+  animateLeg(5);
+};
+
+var indonesiaHighlight = null;
+var INDONESIA_GEOJSON = {"type": "MultiPolygon", "coordinates": [[[[124.450531, -9.18019], [125.068572, -9.015883], [124.954109, -9.241502], [124.451996, -10.146417], [123.536469, -10.331964], [123.583751, -9.944024], [123.895763, -9.440525], [124.332338, -9.466605], [124.450531, -9.18019]]], [[[117.567149, 4.159654], [117.678477, 3.93244], [117.826182, 3.703599], [117.090505, 3.645819], [117.414399, 3.356187], [117.62086, 3.079495], [117.633311, 2.812242], [117.91505, 2.106513], [117.903331, 1.857408], [118.453949, 1.403225], [119.005544, 1.037584], [118.53419, 0.81802], [117.933604, 1.038764], [117.829356, 0.820258], [117.483653, 0.17886], [117.494884, -0.080336], [117.612804, -0.466892], [117.575043, -0.727309], [117.301117, -0.816013], [116.743337, -1.085382], [116.544607, -1.54046], [116.448253, -1.796075], [116.605479, -2.193617], [116.393077, -2.573989], [116.111339, -2.930271], [116.167247, -3.245701], [114.536876, -3.563409], [114.117686, -3.190362], [113.33961, -3.200291], [112.941091, -3.106378], [111.829763, -3.468194], [111.675466, -2.911065], [110.764985, -2.995782], [110.263194, -3.002862], [110.097179, -2.235772], [110.071056, -1.389907], [109.765147, -0.874282], [109.320486, -0.883396], [109.364757, -0.630141], [109.10255, -0.361098], [109.156505, 0.020087], [108.889659, 0.75373], [109.188243, 1.349189], [109.341807, 1.819973], [109.555617, 1.802165], [110.15217, 1.183857], [110.744795, 0.905062], [111.734192, 1.001439], [112.836451, 1.576055], [113.546175, 1.301575], [114.624455, 1.598792], [114.756747, 2.126047], [115.082515, 2.594365], [115.309995, 2.985917], [115.589358, 3.824522], [115.869444, 4.366685], [116.400884, 4.289998], [117.217165, 4.35343], [117.567149, 4.159654]]], [[[140.974457, -2.600518], [140.950187, -6.418935], [140.851743, -6.693957], [140.97698, -9.106134], [140.111583, -7.946547], [139.247895, -8.048761], [138.914399, -8.292087], [139.035899, -7.515232], [139.240001, -7.151056], [138.798106, -6.856215], [138.745779, -6.740167], [138.37672, -5.855645], [138.054861, -5.589614], [137.821788, -5.362888], [137.492198, -5.123224], [137.090099, -4.960138], [136.537852, -4.773614], [135.604747, -4.468438], [134.687755, -4.073175], [134.920421, -3.926853], [134.375255, -3.899102], [134.144216, -3.87477], [133.82252, -3.589939], [133.702159, -3.404392], [133.863943, -3.042087], [133.518565, -3.403253], [133.079112, -4.060642], [132.784923, -3.793145], [132.740733, -3.276544], [132.488455, -3.063084], [131.984548, -2.907647], [132.11085, -2.719415], [132.679047, -2.80169], [133.33839, -2.496189], [133.509451, -2.550063], [133.709727, -2.521173], [133.90211, -2.477227], [133.840099, -2.299737], [133.858165, -2.107354], [133.514659, -2.226007], [132.62672, -2.256443], [131.968598, -1.953383], [131.901134, -1.684177], [131.750173, -1.5735], [131.396983, -1.439386], [130.999522, -1.379083], [131.398774, -0.76629], [132.16627, -0.432224], [133.32602, -0.678806], [134.056407, -0.79518], [134.239106, -1.416274], [134.15211, -2.17547], [134.431651, -2.779392], [134.604259, -2.488458], [134.880626, -3.242934], [135.573741, -3.241306], [135.99879, -2.744806], [136.492931, -2.207127], [136.981456, -2.12656], [137.794444, -1.484145], [139.514985, -2.231378], [140.38852, -2.397068], [140.974457, -2.600518]]], [[[109.906016, -7.83766], [108.881602, -7.632501], [108.13791, -7.786661], [106.607921, -7.417901], [106.354503, -7.002699], [105.723318, -6.838556], [105.260753, -6.767348], [105.711364, -6.534563], [106.512055, -6.024835], [107.187755, -5.980157], [107.895631, -6.209831], [108.574555, -6.66961], [109.531993, -6.835138], [110.664806, -6.565362], [111.137055, -6.685479], [112.150645, -6.910089], [112.587169, -6.999607], [112.826345, -7.293227], [113.47283, -7.722101], [114.347504, -7.754327], [114.427419, -8.49684], [114.104015, -8.638116], [113.750743, -8.52809], [113.197927, -8.277276], [112.376638, -8.37127], [111.772227, -8.30169], [111.425059, -8.268813], [111.058279, -8.254653], [109.906016, -7.83766]]], [[[119.846528, -0.874607], [119.627696, -0.018365], [119.854015, 0.342231], [120.278494, 0.994208], [120.722667, 0.976752], [120.949474, 1.343817], [121.480724, 1.120917], [122.395518, 1.010972], [122.990896, 0.961859], [123.519786, 0.886623], [124.407725, 1.192776], [124.835704, 1.469143], [125.177013, 1.440172], [124.569347, 0.638861], [123.931407, 0.336249], [123.190929, 0.390326], [122.188324, 0.479682], [121.514903, 0.510403], [120.98699, 0.447008], [120.133311, 0.19123], [120.302745, -0.932306], [120.737315, -1.367446], [121.374522, -1.020685], [122.066417, -0.919529], [122.894054, -0.712579], [123.273692, -0.583266], [123.156749, -0.887628], [122.49879, -1.343194], [121.831228, -1.701918], [121.30421, -1.846938], [121.822927, -2.287286], [122.294444, -2.964532], [122.389822, -3.231703], [122.283458, -3.434015], [122.647309, -3.884942], [122.842052, -4.128839], [122.766287, -4.410089], [122.233246, -4.468032], [121.769542, -4.821547], [121.563162, -4.232517], [120.867686, -3.469496], [121.079438, -2.9367], [121.015391, -2.665948], [120.231212, -3.014337], [120.403168, -3.44964], [120.397146, -4.557224], [120.458344, -5.626072], [119.823497, -5.679376], [119.432384, -5.510349], [119.623302, -4.352227], [119.497406, -3.793878], [119.027029, -3.509698], [118.791352, -3.060154], [118.894542, -2.65602], [119.367035, -1.83294], [119.453136, -1.096449], [119.846528, -0.874607]]], [[[100.947276, 1.825385], [101.529633, 1.670803], [102.781261, 0.730902], [102.480724, 0.23428], [103.308116, 0.51317], [103.644705, -0.045994], [103.316661, -0.262872], [103.515798, -0.499607], [103.537608, -0.830336], [104.022309, -1.008233], [104.483409, -1.881443], [104.699962, -2.034356], [104.632823, -2.605157], [104.911632, -2.360284], [105.549001, -2.421157], [105.963145, -2.950291], [105.831309, -4.140232], [105.867442, -5.041274], [105.507335, -5.672784], [105.177989, -5.750421], [104.716075, -5.921075], [103.993175, -5.312677], [103.681651, -4.954685], [103.284516, -4.71502], [101.876964, -3.421319], [100.65447, -1.617608], [100.409679, -1.258559], [100.134044, -0.634698], [99.426931, 0.161363], [99.110606, 0.52383], [98.746267, 1.508938], [98.724946, 1.756822], [97.93336, 2.269761], [97.285167, 3.178453], [96.175304, 4.132717], [95.489106, 4.762437], [95.198985, 5.292873], [95.449718, 5.649563], [96.650564, 5.216254], [97.996837, 4.570217], [98.266368, 4.211575], [98.67662, 3.914547], [99.833995, 3.072414], [100.025157, 2.624579], [100.21339, 2.687445], [100.905935, 1.85692], [100.947276, 1.825385]]], [[[120.792491, -9.96087], [120.086925, -10.162856], [119.628103, -9.76865], [118.94158, -9.570489], [119.79949, -9.383722], [120.508556, -9.696954], [120.792491, -9.96087]]], [[[119.559255, -8.518162], [119.446625, -8.746352], [119.46339, -8.461196], [119.559255, -8.518162]]], [[[116.633311, -8.275079], [116.446611, -8.92008], [116.178477, -8.887791], [115.839262, -8.816857], [116.072645, -8.577784], [116.633311, -8.275079]]], [[[119.203624, -8.610935], [118.898448, -8.688409], [118.835623, -8.848403], [118.286632, -8.77044], [117.757172, -8.926528], [116.758556, -9.004571], [116.984548, -8.495782], [117.612804, -8.432794], [117.805186, -8.719985], [118.282888, -8.587986], [117.71225, -8.240899], [118.253591, -8.340265], [118.689138, -8.387872], [119.038422, -8.58294], [119.203624, -8.610935]]], [[[123.026378, -8.288751], [122.67921, -8.632908], [121.659353, -8.898207], [120.833181, -8.81699], [120.243907, -8.823175], [119.873709, -8.472263], [120.120942, -8.350763], [120.725841, -8.322686], [121.408865, -8.58294], [121.834727, -8.473728], [122.500743, -8.576267], [122.830414, -8.201593], [123.026378, -8.288751]]], [[[115.619151, -8.288751], [115.195079, -8.847101], [114.468435, -8.21852], [115.619151, -8.288751]]], [[[116.303722, -3.718032], [116.170258, -4.004002], [116.046397, -3.497491], [116.303722, -3.718032]]], [[[100.398611, -3.183526], [100.345225, -3.12656], [100.471446, -3.037856], [100.398611, -3.183526]]], [[[99.274425, -1.634942], [98.830333, -1.570245], [98.917979, -0.940118], [99.077647, -1.28338], [99.274425, -1.634942]]], [[[104.654552, 1.096381], [104.421235, 0.968817], [104.33253, 1.154446], [104.654552, 1.096381]]], [[[96.479503, 2.414984], [95.939952, 2.59516], [95.766368, 2.867499], [96.156261, 2.648424], [96.479503, 2.414984]]], [[[108.396169, 3.874823], [108.213634, 3.791164], [107.997244, 4.034247], [108.380138, 3.891181], [108.396169, 3.874823]]], [[[123.390147, -10.591485], [122.854991, -10.755304], [123.375824, -10.495864], [123.390147, -10.591485]]], [[[123.927989, -8.227309], [123.533865, -8.563084], [123.483653, -8.330173], [123.582286, -8.306085], [123.814952, -8.191013], [123.927989, -8.227309]]], [[[125.134044, -8.217055], [124.427908, -8.467462], [124.419688, -8.202244], [125.124522, -8.205824], [125.134044, -8.217055]]], [[[126.836762, -7.726332], [126.189789, -7.923517], [125.853282, -7.823337], [126.617442, -7.562107], [126.836762, -7.726332]]], [[[138.938975, -7.542087], [138.517589, -8.309259], [138.006684, -7.637628], [138.938975, -7.542087]]], [[[131.698578, -7.226739], [131.668712, -7.50921], [131.348643, -7.93906], [131.085704, -7.871759], [131.211681, -7.69492], [131.448497, -7.309259], [131.711192, -7.223891], [131.698578, -7.226739]]], [[[114.045665, -6.914646], [113.513425, -7.247782], [112.717052, -7.117608], [114.045665, -6.914646]]], [[[134.484386, -6.575616], [134.064464, -6.795587], [134.27711, -6.290216], [134.484386, -6.575616]]], [[[132.802013, -5.787367], [132.67449, -5.760024], [132.711111, -5.658624], [132.802013, -5.787367]]], [[[134.758067, -6.157892], [134.358653, -6.219822], [134.354015, -5.828302], [134.472504, -5.557875], [134.682384, -5.575128], [134.764903, -5.890395], [134.772227, -6.089614], [134.758067, -6.157892]]], [[[122.78004, -4.916599], [122.615977, -5.356052], [122.410167, -5.311944], [122.341563, -4.85768], [122.78004, -4.916599]]], [[[123.149913, -5.22503], [122.783458, -5.654229], [122.803233, -5.231866], [122.850597, -4.83115], [123.188731, -4.816583], [122.977875, -5.026462], [123.149913, -5.22503]]], [[[127.240896, -3.470961], [126.173561, -3.602527], [126.95574, -3.137791], [127.259776, -3.371189], [127.240896, -3.470961]]], [[[130.87322, -3.573989], [130.398936, -3.63128], [129.058442, -3.340753], [128.549327, -3.437433], [127.987559, -3.376072], [127.992931, -3.082615], [128.212413, -2.860528], [129.180512, -2.936619], [129.798025, -2.906427], [130.66033, -3.392755], [130.87322, -3.573989]]], [[[108.293712, -2.848403], [107.993988, -3.242446], [107.624685, -3.105401], [107.654552, -2.584893], [108.276134, -2.793878], [108.293712, -2.848403]]], [[[126.329112, -1.819268], [125.468516, -1.937758], [125.489106, -1.797784], [126.329112, -1.819268]]], [[[130.386485, -1.888279], [130.126475, -2.06699], [129.938731, -1.789239], [130.386485, -1.888279]]], [[[125.314789, -1.778985], [124.565196, -2.001642], [124.815196, -1.669692], [125.196462, -1.744236], [125.314789, -1.778985]]], [[[136.848481, -1.765313], [136.413097, -1.881443], [135.957367, -1.79225], [135.440684, -1.635675], [136.7046, -1.730564], [136.848481, -1.765313]]], [[[106.769054, -2.560317], [106.728282, -3.082127], [105.986501, -2.821222], [105.616222, -2.117608], [105.33546, -1.697931], [105.64975, -1.721856], [105.894298, -1.490818], [106.126964, -1.790134], [106.769054, -2.560317]]], [[[128.145193, -1.594008], [127.459972, -1.428888], [128.114513, -1.559828], [128.145193, -1.594008]]], [[[123.503103, -1.264418], [123.252289, -1.600844], [123.053396, -1.408461], [123.189464, -1.145278], [123.409923, -1.228204], [123.503103, -1.264418]]], [[[131.057384, -1.000665], [130.736013, -1.183201], [131.07488, -0.966892], [131.057384, -1.000665]]], [[[130.917247, -0.778416], [130.436778, -0.913263], [130.66391, -0.820896], [130.917247, -0.778416]]], [[[136.375662, -1.093683], [135.740977, -0.819024], [135.677257, -0.685642], [136.1963, -1.066583], [136.375662, -1.093683]]], [[[127.888927, -0.764744], [127.607432, -0.764744], [127.311778, -0.432224], [127.529796, -0.300714], [127.65268, -0.707208], [127.888927, -0.764744]]], [[[131.297618, -0.237237], [130.99586, -0.354913], [130.625255, -0.084975], [130.920909, -0.398045], [130.516124, -0.291192], [130.241954, -0.195571], [130.347504, -0.16839], [130.427501, -0.079522], [130.761485, -0.018365], [131.253673, -0.140313], [131.297618, -0.237237]]], [[[104.928966, -0.237237], [104.523936, -0.265883], [104.664561, -0.099379], [104.928966, -0.237237]]], [[[97.928477, 0.99608], [97.657481, 0.687242], [97.212657, 1.284329], [97.391612, 1.508938], [97.836274, 1.069973], [97.928477, 0.99608]]], [[[127.666026, -0.209242], [127.550548, 0.529364], [127.480479, 1.065009], [127.542491, 1.630439], [128.050141, 2.147528], [128.015798, 1.600775], [127.754893, 1.078599], [128.075694, 1.125067], [128.488943, 1.542182], [128.714366, 1.24315], [128.220958, 0.81269], [128.673595, 0.499579], [128.361501, 0.400214], [127.9546, -0.163507], [128.248709, -0.826104], [127.666026, -0.209242]]]]};
+
+function highlightIndonesia(){
+  if(indonesiaHighlight) return;
+  indonesiaHighlight = L.geoJSON(INDONESIA_GEOJSON, {
+    style: {
+      color: '#e03030',
+      weight: 1.5,
+      fillColor: '#e03030',
+      fillOpacity: 0.25,
+      opacity: 0.8
+    }
+  }).addTo(map);
+  // Subtle pulse on fill opacity
+  var opacity = 0.25;
+  var dir = 1;
+  setInterval(function(){
+    opacity += dir * 0.008;
+    if(opacity > 0.38){ dir = -1; }
+    if(opacity < 0.15){ dir = 1; }
+    if(indonesiaHighlight) indonesiaHighlight.setStyle({fillOpacity: opacity});
+  }, 50);
+}
+
+function showLandingAnnouncement(onDone){
+  var modal = document.getElementById('landing-modal');
+  var audio = document.getElementById('landing-audio');
+  document.querySelectorAll('#landing-bars .audio-bar').forEach(function(b){b.classList.remove('stopped');});
+  modal.classList.add('show');
+  // Audio already started during flight; only play if not already playing
+  if(audio.paused){ audio.currentTime = 0; audio.play().catch(function(){}); }
+
+  function closeLanding(){
+    modal.classList.remove('show');
+    audio.pause();
+    audio.currentTime = 0;
+    audio.onended = null;
+    if(onDone) onDone();
+  }
+  audio.onended = closeLanding;
+    document.getElementById('landing-skip').onclick = closeLanding;
+}
+
+function arrivedIndonesia(){
+  document.getElementById('flight-bar').classList.remove('show');
+  map.flyTo([-6.2, 106.81], 10, {duration:3, easeLinearity:0.2});
+  setTimeout(function(){
+    showReveal();
+  }, 3500);
+}
+
+function showMilesDialog(km, msg){
+  document.getElementById('miles-dialog-km').textContent = '+' + km.toLocaleString() + ' mile';
+  document.getElementById('miles-dialog-msg').textContent = msg;
+  document.getElementById('miles-dialog').style.display = 'flex';
+  }
+
+window.closeMilesDialog = function(){
+  document.getElementById('miles-dialog').style.display = 'none';
+  // If this was the last word, show bonus after dialog closes
+  if(window._pendingBonus && window._pendingBonus > 0){
+    var bonus = window._pendingBonus;
+    window._pendingBonus = 0;
+    setTimeout(function(){
+      document.getElementById('bonus-miles-text').textContent = '+' + bonus.toLocaleString() + ' mile';
+      document.getElementById('bonus-modal').classList.add('show');
+          document.getElementById('bonus-close-btn').onclick = function(){
+        document.getElementById('bonus-modal').classList.remove('show');
+        totalKm += bonus;
+        var pct2 = Math.min(totalKm/MAX_KM*100,100);
+        document.getElementById('baro-fill').style.width = pct2+'%';
+        document.getElementById('km-display').textContent = totalKm.toLocaleString()+' mile';
+        var currentZone2='';
+        ZONES.forEach(function(z){
+          if(totalKm>=z.km){
+            z.regions.forEach(function(rid){var el=document.getElementById(rid);if(el){el.classList.add('unlocked');el.classList.remove('current');}});
+            currentZone2=z.name;if(unlockedZones.indexOf(z.name)<0)unlockedZones.push(z.name);
+          }
+        });
+        document.getElementById('map-zone-label').textContent='✓ Toate regiunile deblocate!';
+        document.getElementById('map-zone-label').classList.add('lit');
+        setTimeout(function(){
+          document.getElementById('launch-btn').style.display='block';
+          document.getElementById('baro-zone').textContent='Ești pregătit?';
+        },600);
+      };
+    }, 400);
+  }
+};
+
+function showReveal(){
+  spawnConfetti();
+  setTimeout(function(){document.getElementById('reveal').classList.add('show');},700);
+}
+
+function spawnConfetti(){
+  var colors=['#b8956a','#4aeb8a','#e8d5a3','#6a9abe','#eb4a6a','#ebe84a'];
+  for(var i=0;i<120;i++){(function(i){setTimeout(function(){
+    var c=document.createElement('div');c.className='confetti';
+    c.style.cssText='left:'+Math.random()*100+'%;background:'+colors[Math.floor(Math.random()*colors.length)]+';animation-duration:'+(2+Math.random()*3)+'s;border-radius:'+(Math.random()>0.5?'50%':'2px')+';width:'+(5+Math.random()*9)+'px;height:'+(5+Math.random()*9)+'px;';
+    document.body.appendChild(c);setTimeout(function(){c.remove();},5500);
+  },i*40);})(i);}
+}
+
+// ── INSTRUCTIONS → GAME ──
+document.getElementById('instr-start').addEventListener('click',function(){
+  document.getElementById('instructions').classList.remove('show');
+  setTimeout(initGamePanel,400);
+});
+
+// ── INTRO → INSTRUCTIONS ──
+document.getElementById('start-btn').addEventListener('click',function(){
+  var intro=document.getElementById('intro');intro.style.opacity='0';
+  setTimeout(function(){intro.style.display='none';setTimeout(function(){document.getElementById('instructions').classList.add('show');},400);},1500);
+});
+
+// Global functions accessible from HTML onclick
+
+// Array.findIndex polyfill
+if(!Array.prototype.findIndex){Array.prototype.findIndex=function(cb){for(var i=0;i<this.length;i++)if(cb(this[i],i,this))return i;return -1;};}
+
+// ── BOARDING PASS PRINT ──
+function generateBarcode(containerId){
+  var wrap = document.getElementById(containerId);
+  if(!wrap) return;
+  wrap.innerHTML = '';
+  for(var i=0;i<90;i++){
+    var b = document.createElement('div');
+    b.className = 'bpp-bar';
+    b.style.width = (Math.random() > 0.5 ? 2 : 1) + 'px';
+    b.style.height = (Math.random() > 0.3 ? 36 : 22) + 'px';
+    wrap.appendChild(b);
+  }
+}
+
+window.showBoardingPassPrint = function(){
+  generateBarcode('bpp-bc-1');
+  generateBarcode('bpp-bc-2');
+  var modal = document.getElementById('bp-print-modal');
+  modal.style.opacity = '0';
+  modal.style.pointerEvents = 'all';
+  modal.style.display = 'flex';
+  setTimeout(function(){ modal.style.opacity = '1'; }, 50);
+};
+
+window.hideBoardingPassPrint = function(){
+  var modal = document.getElementById('bp-print-modal');
+  modal.style.opacity = '0';
+  setTimeout(function(){ modal.style.pointerEvents = 'none'; }, 600);
+};
+
+// ── TURBO MODE ──
+
+document.getElementById('word-input').addEventListener('click', function(){
+  window.showKeyboard();
+});
+
+window.hideKeyboard = function(){
+  document.getElementById('custom-keyboard').classList.remove('show');
+};
+
+window.kbPress = function(letter){
+  var inp = document.getElementById('word-input');
+  if(inp.disabled) return;
+  inp.value += letter;
+};
+
+window.kbDel = function(){
+  var inp = document.getElementById('word-input');
+  inp.value = inp.value.slice(0, -1);
+};
+
+document.addEventListener('click', function(e){
+  var kb = document.getElementById('custom-keyboard');
+  var inp = document.getElementById('word-input');
+  if(!kb.contains(e.target) && e.target !== inp){
+    kb.classList.remove('show');
+  }
+});
+
+// ── BREAKFAST ──
+var breakfastDismissed = [false, false, false];
+var breakfastWarnings = [
+  '⚠ Ne pare rău. Ouăle Benedict s-au terminat. Investigăm.',
+  '⚠ Ne pare rău. Croissantul cu caviar nu mai este disponibil. Parisul ne-a dezamăgit.',
+  '⚠ Ne pare rău. Acai bowl-ul s-a epuizat. Wellness-ul are limite.'
+];
+
+function showBreakfastModal(){
+  breakfastDismissed = [false, false, false];
+  ['bfst-item-0','bfst-item-1','bfst-item-2'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(!el) return;
+    el.classList.remove('unavailable');
+    var tag = el.querySelector('.catering-unavailable-tag');
+    if(tag) tag.remove();
+  });
+  document.getElementById('bfst-bread').style.display = 'none';
+  document.getElementById('breakfast-continue-btn').style.display = 'none';
+  document.getElementById('breakfast-accept-btn').style.display = 'none';
+  var w = document.getElementById('breakfast-warning');
+  w.classList.remove('show'); w.textContent = '';
+
+  var audioModal = document.getElementById('breakfast-audio-modal');
+  var audio = document.getElementById('breakfast-audio');
+  audioModal.classList.add('show');
+  audio.currentTime = 0;
+  audio.play().catch(function(){ openMenu(); });
+  function openMenu(){
+    if(openMenu.done) return; openMenu.done=true;
+    audioModal.classList.remove('show');
+    document.getElementById('breakfast-modal').classList.add('show');
+  }
+  audio.onended = openMenu;
+  setTimeout(openMenu, 120000);
+}
+
+window.selectBreakfastItem = function(idx){
+  if(breakfastDismissed[idx]) return;
+  breakfastDismissed[idx] = true;
+  var item = document.getElementById('bfst-item-'+idx);
+  item.classList.add('unavailable');
+  var tag = document.createElement('div');
+  tag.className = 'catering-unavailable-tag'; tag.textContent = 'EPUIZAT';
+  item.appendChild(tag);
+  var warning = document.getElementById('breakfast-warning');
+  warning.classList.add('show'); warning.textContent = breakfastWarnings[idx];
+  if(breakfastDismissed.every(function(v){return v;})){
+    setTimeout(function(){ document.getElementById('breakfast-continue-btn').style.display = 'block'; }, 800);
+  }
+};
+
+window.revealBreakfastBread = function(){
+  document.getElementById('breakfast-continue-btn').style.display = 'none';
+  document.getElementById('bfst-bread').style.display = 'flex';
+  document.getElementById('breakfast-warning').textContent = 'O felie de pâine. Aceasta este situația.';
+  setTimeout(function(){ document.getElementById('breakfast-accept-btn').style.display = 'block'; }, 600);
+};
+
+window.acceptBreakfast = function(){
+  document.getElementById('breakfast-modal').classList.remove('show');
+  var audio = document.getElementById('breakfast-audio');
+  if(audio){ audio.pause(); audio.currentTime = 0; }
+  animateLeg(3);
+};
+
+// ── DINNER ──
+var dinnerDismissed = [false, false, false];
+var dinnerWarnings = [
+  '⚠ Ne pare rău. Fileul Wellington s-a terminat. Cheful a mâncat ultima porție.',
+  '⚠ Ne pare rău. Homarul nu mai este disponibil. A scăpat. Literalmente.',
+  '⚠ Ne pare rău. Risotto s-a epuizat. Parmezan-ul a refuzat să coopereze.'
+];
+
+function showDinnerModal(){
+  dinnerDismissed = [false, false, false];
+  ['din-item-0','din-item-1','din-item-2'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(!el) return;
+    el.classList.remove('unavailable');
+    var tag = el.querySelector('.catering-unavailable-tag');
+    if(tag) tag.remove();
+  });
+  document.getElementById('din-bread').style.display = 'none';
+  document.getElementById('dinner-continue-btn').style.display = 'none';
+  document.getElementById('dinner-accept-btn').style.display = 'none';
+  var w = document.getElementById('dinner-warning');
+  w.classList.remove('show'); w.textContent = '';
+
+  var audioModal = document.getElementById('dinner-audio-modal');
+  var audio = document.getElementById('dinner-audio');
+  audioModal.classList.add('show');
+  audio.currentTime = 0;
+  audio.play().catch(function(){ openMenu(); });
+  function openMenu(){
+    if(openMenu.done) return; openMenu.done=true;
+    audioModal.classList.remove('show');
+    document.getElementById('dinner-modal').classList.add('show');
+  }
+  audio.onended = openMenu;
+  setTimeout(openMenu, 120000);
+}
+
+window.selectDinnerItem = function(idx){
+  if(dinnerDismissed[idx]) return;
+  dinnerDismissed[idx] = true;
+  var item = document.getElementById('din-item-'+idx);
+  item.classList.add('unavailable');
+  var tag = document.createElement('div');
+  tag.className = 'catering-unavailable-tag'; tag.textContent = 'EPUIZAT';
+  item.appendChild(tag);
+  var warning = document.getElementById('dinner-warning');
+  warning.classList.add('show'); warning.textContent = dinnerWarnings[idx];
+  if(dinnerDismissed.every(function(v){return v;})){
+    setTimeout(function(){ document.getElementById('dinner-continue-btn').style.display = 'block'; }, 800);
+  }
+};
+
+window.revealDinnerBread = function(){
+  document.getElementById('dinner-continue-btn').style.display = 'none';
+  document.getElementById('din-bread').style.display = 'flex';
+  document.getElementById('dinner-warning').textContent = 'Resturi de la prânz. Vă dorim poftă bună.';
+  setTimeout(function(){ document.getElementById('dinner-accept-btn').style.display = 'block'; }, 600);
+};
+
+window.acceptDinner = function(){
+  document.getElementById('dinner-modal').classList.remove('show');
+  var audio = document.getElementById('dinner-audio');
+  if(audio){ audio.pause(); audio.currentTime = 0; }
+  animateLeg(7);
+};
+
+</script>
+
+</body>
+</html>
