@@ -17,7 +17,7 @@ async function requestWakeLock(){
 window.addEventListener('load', requestWakeLock);
 document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='visible') requestWakeLock(); });
 </script>
-<title>Unde mergem?</title>
+<title>Mystery Airlines</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=IM+Fell+English:ital@0;1&family=Share+Tech+Mono&family=Inter:wght@400;500;600;700&display=swap');
@@ -89,7 +89,7 @@ body{background:#1a1a2e;font-family:'IM Fell English',serif;overflow:hidden;heig
 
 /* INSTRUCTIONS */
 #instructions{position:fixed;inset:0;background:rgba(5,8,20,0.97);z-index:3000;display:flex;align-items:center;justify-content:center;display:none;}
-#instructions.show{display:flex;opacity:1;}
+#instructions.show{display:flex;opacity:1;animation:slideInLeft 0.4s cubic-bezier(0.34,1.2,0.64,1);}
 .instr-card{
   background:#08090f;
   border:1px solid rgba(184,149,106,0.2);
@@ -166,7 +166,7 @@ body{background:#1a1a2e;font-family:'IM Fell English',serif;overflow:hidden;heig
 
 /* GAME PANEL */
 #game-panel{-webkit-backface-visibility:hidden;backface-visibility:hidden;position:fixed;inset:0;z-index:1500;display:none;width:100%;max-width:100%;background:#0a0e1a;overflow-y:auto;flex-direction:column;align-items:center;justify-content:flex-start;padding:0;}
-#game-panel.show{display:flex;}
+#game-panel.show{display:flex;animation:slideInBottom 0.5s cubic-bezier(0.34,1.2,0.64,1);}
 #boarding-pass{background:#f5f0e8;border-radius:14px;overflow:hidden;box-shadow:0 0 50px rgba(0,0,0,0.7);width:100%;max-width:640px;margin:20px auto;}
 .bp-header{background:linear-gradient(135deg,#0d1117,#1a1535);padding:14px 22px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #b8956a;}
 .bp-airline{color:#b8956a;font-family:'Playfair Display',serif;font-size:22px;font-weight:700;letter-spacing:4px;}
@@ -237,7 +237,7 @@ body{background:#1a1a2e;font-family:'IM Fell English',serif;overflow:hidden;heig
 
 /* ROULETTE OVERLAY */
 #roulette-overlay{position:fixed;inset:0;background:rgba(5,8,20,0.96);z-index:3000;display:flex;flex-direction:column;align-items:center;justify-content:center;display:none;gap:20px;}
-#roulette-overlay.show{display:flex;opacity:1;}
+#roulette-overlay.show{display:flex;opacity:1;animation:slideInTop 0.5s cubic-bezier(0.34,1.2,0.64,1);}
 .rl-title{font-family:'Inter',sans-serif;font-size:clamp(18px,3vw,26px);font-weight:700;color:#ffffff;letter-spacing:0;text-align:center;}
 .rl-sub{font-family:'Inter',sans-serif;font-size:18px;color:rgba(255,255,255,0.85);text-align:center;}
 #roulette-wrap{position:relative;width:440px;height:440px;}
@@ -256,7 +256,7 @@ body{background:#1a1a2e;font-family:'IM Fell English',serif;overflow:hidden;heig
   background:rgba(0,0,0,0.92);backdrop-filter:blur(10px);
   display:none;transition:opacity 0.6s;
 }
-#mystery-modal.show{display:flex;opacity:1;}
+#mystery-modal.show{display:flex;opacity:1;animation:scaleIn 0.5s cubic-bezier(0.34,1.56,0.64,1);}
 #mystery-modal-card{
   background:linear-gradient(160deg,#0d1124,#0a0e1a);
   border:1px solid rgba(184,149,106,0.5);
@@ -287,7 +287,7 @@ body{background:#1a1a2e;font-family:'IM Fell English',serif;overflow:hidden;heig
   background:rgba(0,0,0,0.88);backdrop-filter:blur(8px);
   display:none;transition:opacity 0.4s;
 }
-#ignore-modal-2.show, #ignore-modal-3.show, #ignore-modal-4.show, #ignore-modal-5.show{display:flex;opacity:1;}
+#ignore-modal-2.show, #ignore-modal-3.show, #ignore-modal-4.show, #ignore-modal-5.show{display:flex;opacity:1;animation:slideInRight 0.4s cubic-bezier(0.34,1.2,0.64,1);}
 #ignore-modal-card-2, #ignore-modal-card-3{
   background:#0a0e1a;border:1px solid rgba(200,70,70,0.5);
   border-radius:10px;padding:40px 44px;text-align:center;
@@ -313,7 +313,7 @@ body.panel-active #vignette{display:none !important;}
   background:rgba(0,0,0,0.88);backdrop-filter:blur(8px);
   display:none;transition:opacity 0.4s;
 }
-#ignore-modal.show{display:flex;opacity:1;}
+#ignore-modal.show{display:flex;opacity:1;animation:slideInRight 0.4s cubic-bezier(0.34,1.2,0.64,1);}
 #ignore-modal-card{
   background:#0a0e1a;border:1px solid rgba(200,70,70,0.5);
   border-radius:10px;padding:40px 44px;text-align:center;
@@ -367,9 +367,18 @@ body.panel-active #vignette{display:none !important;}
 .kb-key.kb-space{max-width:120px;letter-spacing:2px;font-size:10px;color:rgba(255,255,255,0.4);}
 
 
+
+/* ── MODAL ANIMATIONS ── */
+@keyframes slideInBottom{from{transform:translateY(100%);opacity:0;}to{transform:translateY(0);opacity:1;}}
+@keyframes slideInTop{from{transform:translateY(-100%);opacity:0;}to{transform:translateY(0);opacity:1;}}
+@keyframes slideInLeft{from{transform:translateX(-100%);opacity:0;}to{transform:translateX(0);opacity:1;}}
+@keyframes slideInRight{from{transform:translateX(100%);opacity:0;}to{transform:translateX(0);opacity:1;}}
+@keyframes scaleIn{from{transform:scale(0.85);opacity:0;}to{transform:scale(1);opacity:1;}}
+@keyframes fadeInUp{from{transform:translateY(40px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+
 /* PLANE RUNWAY */
 #runway-overlay{position:fixed;inset:0;background:rgba(5,8,20,0.97);z-index:3000;display:flex;flex-direction:column;align-items:center;justify-content:center;display:none;gap:16px;}
-#runway-overlay.show{display:flex;opacity:1;}
+#runway-overlay.show{display:flex;opacity:1;animation:slideInBottom 0.4s cubic-bezier(0.34,1.2,0.64,1);}
 .rw-title{font-family:'Inter',sans-serif;font-size:clamp(22px,5vw,34px);color:#ffffff;letter-spacing:0;text-align:center;font-weight:700;}
 #runway-plane{font-size:80px;transition:transform 1s ease-in-out;display:block;text-align:center;filter:drop-shadow(0 0 30px rgba(255,200,100,0.8));}
 .rw-status{font-family:'Inter',sans-serif;font-size:18px;letter-spacing:0;color:#ffffff;text-align:center;height:24px;min-height:24px;}
@@ -383,7 +392,7 @@ body.panel-active #vignette{display:none !important;}
   background:rgba(0,0,0,0.85);backdrop-filter:blur(8px);
   display:none;
 }
-#bonus-modal.show{display:flex;opacity:1;}
+#bonus-modal.show{display:flex;opacity:1;animation:scaleIn 0.4s cubic-bezier(0.34,1.56,0.64,1);}
 .bonus-card{
   background:#0a0e1a;border:1px solid rgba(184,149,106,0.4);
   border-radius:8px;padding:40px 48px;text-align:center;
@@ -440,7 +449,7 @@ body.panel-active #vignette{display:none !important;}
   display:none;
   padding:24px;
 }
-#checklist-overlay.show{display:flex;opacity:1;}
+#checklist-overlay.show{display:flex;opacity:1;animation:slideInRight 0.4s cubic-bezier(0.34,1.2,0.64,1);}
 .checklist-card{
   background:#08090f;border:1px solid rgba(255,255,255,0.1);
   border-radius:12px;padding:36px 40px;max-width:460px;width:100%;
@@ -498,14 +507,14 @@ body.panel-active #vignette{display:none !important;}
   display:none;align-items:center;justify-content:center;
   background:rgba(0,0,0,0.92);backdrop-filter:blur(12px);
 }
-#breakfast-modal.show, #dinner-modal.show{display:flex;opacity:1;}
+#breakfast-modal.show, #dinner-modal.show{display:flex;opacity:1;animation:slideInBottom 0.5s cubic-bezier(0.34,1.2,0.64,1);}
 #breakfast-audio-modal, #dinner-audio-modal{
   position:fixed;inset:0;z-index:6000;
   display:flex;align-items:center;justify-content:center;
   background:rgba(0,0,0,0.92);backdrop-filter:blur(12px);
   display:none;transition:opacity 0.6s;
 }
-#breakfast-audio-modal.show, #dinner-audio-modal.show{display:flex;opacity:1;}
+#breakfast-audio-modal.show, #dinner-audio-modal.show{display:flex;opacity:1;animation:fadeInUp 0.4s ease;}
 
 #catering-audio-modal{
   position:fixed;inset:0;z-index:6000;
@@ -513,7 +522,7 @@ body.panel-active #vignette{display:none !important;}
   background:rgba(0,0,0,0.92);backdrop-filter:blur(12px);
   display:none;transition:opacity 0.6s;
 }
-#catering-audio-modal.show{display:flex;opacity:1;}
+#catering-audio-modal.show{display:flex;opacity:1;animation:fadeInUp 0.4s ease;}
 
 #audio-modal{
   position:fixed;inset:0;z-index:6000;
@@ -521,7 +530,7 @@ body.panel-active #vignette{display:none !important;}
   background:rgba(0,0,0,0.92);backdrop-filter:blur(12px);
   display:none;
 }
-#audio-modal.show{display:flex;opacity:1;}
+#audio-modal.show{display:flex;opacity:1;animation:fadeInUp 0.4s ease;}
 .audio-card{
   background:#08090f;
   border:1px solid rgba(184,149,106,0.3);
@@ -540,7 +549,7 @@ body.panel-active #vignette{display:none !important;}
 .audio-ring:nth-child(2){animation-delay:0.5s;border-color:rgba(184,149,106,0.15);}
 .audio-ring:nth-child(3){animation-delay:1s;border-color:rgba(184,149,106,0.07);}
 @keyframes audioRing{0%{transform:scale(1);opacity:1}100%{transform:scale(1.8);opacity:0}}
-.audio-plane{font-size:32px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);}
+.audio-plane{font-size:32px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#ffffff;filter:brightness(10);}
 .audio-title{font-family:'Inter',sans-serif;font-size:22px;font-weight:700;color:#ffffff;margin-bottom:8px;letter-spacing:-0.3px;}
 .audio-sub{font-family:'Inter',sans-serif;font-size:18px;color:rgba(255,255,255,0.85);line-height:1.6;margin-bottom:24px;}
 .audio-bars{display:flex;gap:4px;justify-content:center;align-items:flex-end;height:32px;margin-bottom:24px;}
@@ -567,7 +576,7 @@ body.panel-active #vignette{display:none !important;}
 
 /* REVEAL */
 #reveal{position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:4000;display:flex;flex-direction:column;align-items:center;justify-content:center;display:none;gap:14px;}
-#reveal.show{display:flex;opacity:1;}
+#reveal.show{display:flex;opacity:1;animation:fadeInUp 0.6s ease;}
 #reveal-pre{font-family:'Share Tech Mono',monospace;font-size:13px;letter-spacing:6px;color:rgba(255,255,255,0.7);text-transform:uppercase;}
 #reveal-title{font-family:'Playfair Display',serif;font-size:clamp(52px,12vw,110px);font-weight:700;font-style:italic;color:#e8d5a3;letter-spacing:8px;animation:rglow 2s ease-in-out infinite;}
 @keyframes rglow{0%,100%{text-shadow:0 0 20px rgba(232,213,163,0.3)}50%{text-shadow:0 0 60px rgba(232,213,163,0.9),0 0 110px rgba(232,213,163,0.3)}}
@@ -585,7 +594,7 @@ body.panel-active #vignette{display:none !important;}
   display:none;
   padding:24px;
 }
-#catering-modal.show{display:flex;opacity:1;}
+#catering-modal.show{display:flex;opacity:1;animation:slideInBottom 0.5s cubic-bezier(0.34,1.2,0.64,1);}
 .catering-card{
   background:#08090f;
   border:1px solid rgba(184,149,106,0.25);
@@ -660,7 +669,7 @@ body.panel-active #vignette{display:none !important;}
   background:rgba(0,0,0,0.92);backdrop-filter:blur(12px);
   display:none;
 }
-#landing-modal.show{display:flex;opacity:1;}
+#landing-modal.show{display:flex;opacity:1;animation:fadeInUp 0.4s ease;}
 /* landing-skip styled via .skip-announce-btn */
 
 
@@ -737,11 +746,11 @@ body.panel-active #vignette{display:none !important;}
 <div id="intro">
   <canvas id="intro-canvas"></canvas>
   <div id="intro-content">
-    <div class="intro-eyebrow">Mystery Airlines · 2026</div>
-    <h1>Unde <span>mergem?</span></h1>
-    <div class="intro-tagline">Ai ales aventura. Undeva pe acest pământ te așteaptă o vacanță. Harta știe răspunsul... dar nu îl va dezvălui ușor.</div>
+    <div class="intro-eyebrow">Powered by · Mystery Airlines</div>
+    <h1>Avion <span>cu motor</span></h1>
+    <div class="intro-tagline">Ai ales aventura. Undeva pe acest pământ te așteaptă o vacanță. Doar harta știe răspunsul, dar nu îl va dezvălui ușor.</div>
     <div class="intro-divider"></div>
-    <button class="intro-btn" id="start-btn">Începe misiunea</button>
+    <button class="intro-btn" id="start-btn">Partikip</button>
     <div class="intro-plane">✈</div>
   </div>
 </div>
@@ -756,15 +765,15 @@ body.panel-active #vignette{display:none !important;}
     <div class="instr-body">
       <div class="instr-rule">
         <div class="instr-num">1</div>
-        <div class="instr-text">Ai descoperit <strong>7 cuvinte cheie</strong> în cele 7 integrame. Fiecare cuvânt valorează un anumit număr de mile.</div>
+        <div class="instr-text">Ai descoperit <strong>7 cuvinte cheie</strong> în cele 7 integrame. Fiecare cuvânt-cheie descoperit la integrame valorează un anumit număr de Mystery Miles. Cu milele acumulate, poți debloca regiuni de pe hartă.</div>
       </div>
       <div class="instr-rule">
         <div class="instr-num">2</div>
-        <div class="instr-text">Alege <strong>exact 4 cuvinte</strong>. Cu cât acumulezi mai multe mile, cu atât mai multe regiuni poți debloca, deci există mai multe posibilități.</div>
+        <div class="instr-text">Alege <strong>exact 4 cuvinte</strong>. Va trebui să alegi fix 4 cuvinte din cele 7, nici mai mult, nici mai puțin, și să le introduci la pagina boardingpass.</div>
       </div>
       <div class="instr-rule">
         <div class="instr-num">3</div>
-        <div class="instr-text">Dacă nimerești <strong>Cuvântul de Aur</strong>, milele câștigate vor fi pe măsură!</div>
+        <div class="instr-text">Dacă ești norocos și nimerești Cuvântul Misterios, poți debloca toate destinațiile disponibile.</div>
       </div>
       <hr class="instr-divider"/>
       <div class="instr-warning">
@@ -773,7 +782,7 @@ body.panel-active #vignette{display:none !important;}
       </div>
     </div>
     <div class="instr-footer">
-      <button id="instr-start">Sunt pregătit</button>
+      <button id="instr-start">Am înțeles, sunt pregătit!</button>
     </div>
   </div>
 </div>
@@ -786,7 +795,7 @@ body.panel-active #vignette{display:none !important;}
   <div id="boarding-pass">
     <div class="bp-header">
       <div class="bp-airline">MYSTERY AIRLINES</div>
-      <div class="bp-flightno">ZBOR MA-2027 // BOARDING PASS</div>
+      <div class="bp-flightno">ZBOR MA-SHJ11 // BOARDING PASS</div>
     </div>
     <div class="bp-body">
       <div class="bp-left">
@@ -904,7 +913,7 @@ body.panel-active #vignette{display:none !important;}
         Vei afla destinația <strong>abia la aterizare</strong>. Până atunci, urmărește cu atenție anunțurile echipajului de bord, deoarece conțin indicii importante.<br><br>
         Mult succes. O să ai nevoie. 🛫
       </div>
-      <button id="mystery-continue-btn" onclick="closeMysteryModal()">AM ÎNȚELES, HAI ODATĂ!</button>
+      <button id="mystery-continue-btn" onclick="closeMysteryModal()">AM ÎNȚELES, BO$$!</button>
     </div>
   </div>
 </div>
@@ -915,10 +924,9 @@ body.panel-active #vignette{display:none !important;}
     <div class="ignore-icon">🚨</div>
     <div class="ignore-title">Greșeală gravă.</div>
     <div class="ignore-text">
-      Tocmai ai ignorat anunțurile echipajului de bord.<br><br>
-      Ca urmare, conform <strong>Regulamentului Intern Mystery Airlines nr. 7, alin. 3</strong>, locul tău a fost retrogradat la clasa <em>„Sub Economy"</em> — rândul din spatele toaletei, lângă motorul care face zgomot ciudat.<br><br>
-      De asemenea, chifla cu care urmează să fii servit a fost confiscată preventiv.<br><br>
-      <em style="color:rgba(184,149,106,0.8);">Vă mulțumim că ați ales Mystery Airlines.</em>
+      Ai ignorat anunțul. Echipajul a notat acest lucru. Nu cu supărare. Cu dezamăgire, ceea ce e mai rău.<br><br>
+      Cina ta a fost <strong>redistribuită piloților</strong>. Piloții au mâncat foarte bine. Îți mulțumesc.<br><br>
+      <em style="color:rgba(184,149,106,0.8);">Noapte bună. Eventual.</em>
     </div>
     <button id="ignore-close-btn" onclick="closeIgnoreModal()">AM ÎNȚELES. MĂ CONFORMEZ.</button>
   </div>
@@ -969,7 +977,7 @@ body.panel-active #vignette{display:none !important;}
     <div class="bonus-title">Mystery Airlines Bonus</div>
     <div class="bonus-miles" id="bonus-miles-text">+8,500 mile</div>
     <div class="bonus-sub">Sărăkie! De milă, Mystery Airlines îți oferă aceste mile bonus.<br>Acum poți zbura mai departe. Cu binele nostru.</div>
-    <button class="bonus-close" id="bonus-close-btn">Continuă</button>
+    <button class="bonus-close" id="bonus-close-btn">Mulțumesc!</button>
   </div>
 </div>
 
@@ -1301,7 +1309,7 @@ window.showIgnoreModal4()">IGNORĂ ANUNȚUL</button>
 </div>
 
 <div id="reveal">
-  <div id="reveal-pre">Destinația ta este</div>
+  <div id="reveal-pre">Am ajuns în</div>
   <div id="reveal-title">Indonezia</div>
   <div id="reveal-sub">Indonezia · 2027</div>
   <div id="reveal-msg">La celălalt capăt al lumii,<br>unde pământul fierbe sub picioare,<br>unde aerul miroase a pădure după ploaie,<br>unde vulcanii dorm cu ochii deschiși<br>și dragonii nu sunt doar un vis.</div>
