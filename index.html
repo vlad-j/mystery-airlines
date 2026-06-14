@@ -561,7 +561,7 @@ body.panel-active #vignette{display:none !important;}
 #flight-bar{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:1500;background:rgba(10,14,26,0.92);border:1px solid rgba(184,149,106,0.25);border-radius:6px;padding:10px 22px;display:flex;flex-direction:column;align-items:center;gap:5px;opacity:0;pointer-events:none;transition:opacity 0.7s;min-width:280px;}
 #flight-bar.show{opacity:1;pointer-events:all;}
 #flight-from-to{font-family:'Share Tech Mono',monospace;font-size:15px;letter-spacing:3px;color:#ffffff;}
-#flight-progress-wrap{width:240px;height:3px;background:rgba(184,149,106,0.15);border-radius:2px;}
+#flight-progress-wrap{width:240px;height:3px;background:rgba(184,149,106,0.15);border-radius:2px;display:none;}
 #flight-progress-bar{height:3px;background:#b8956a;border-radius:2px;width:0%;transition:width 0.5s;}
 #flight-eta{font-family:'Inter',sans-serif;font-size:15px;color:rgba(255,255,255,0.8);}
 
@@ -1912,6 +1912,8 @@ function stopFireworks(){
 
 // ── IGNORE CREW MODAL ──
 window.showIgnoreModal = function showIgnoreModal(){
+  var audio = document.getElementById('announcement-audio');
+  if(audio){ audio.pause(); }
   document.getElementById('ignore-modal').classList.add('show');
 };
 
