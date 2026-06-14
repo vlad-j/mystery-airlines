@@ -30,6 +30,7 @@ body{background:#1a1a2e;font-family:'IM Fell English',serif;overflow:hidden;heig
 /* INTRO */
 #intro{
   position:fixed;inset:0;z-index:2000;
+  background:#0a0e1a;
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:0;transition:opacity 1.5s;overflow:hidden;
 }
@@ -51,7 +52,7 @@ body{background:#1a1a2e;font-family:'IM Fell English',serif;overflow:hidden;heig
   font-weight:700;font-style:normal;
   color:#ffffff;letter-spacing:-1px;line-height:1.05;
   text-shadow:0 0 60px rgba(184,149,106,0.4),0 4px 30px rgba(0,0,0,0.8);
-  animation:fadeUp 1s 0.5s both;
+  animation:fadeUp 1s 0.5s forwards;opacity:0;
 }
 #intro h1 span{color:#b8956a;}
 .intro-tagline{
@@ -71,7 +72,7 @@ body{background:#1a1a2e;font-family:'IM Fell English',serif;overflow:hidden;heig
   font-family:'Share Tech Mono',monospace;font-size:13px;letter-spacing:5px;
   padding:16px 48px;cursor:pointer;text-transform:uppercase;
   transition:all 0.4s;border-radius:2px;
-  animation:fadeUp 1s 1.2s both;
+  animation:fadeUp 1s 1.2s both;-webkit-animation:fadeUp 1s 1.2s both;
   backdrop-filter:blur(10px);
 }
 .intro-btn:hover{
@@ -2444,6 +2445,8 @@ window.hideBoardingPassPrint = function(){
 };
 
 // ── TURBO MODE ──
+
+}); // end window load listener
 
 document.getElementById('word-input').addEventListener('click', function(){
   window.showKeyboard();
