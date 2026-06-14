@@ -2448,6 +2448,10 @@ window.hideBoardingPassPrint = function(){
 
 }); // end window load listener
 
+window.showKeyboard = function(){
+  document.getElementById('custom-keyboard').classList.add('show');
+};
+
 document.getElementById('word-input').addEventListener('click', function(){
   window.showKeyboard();
 });
