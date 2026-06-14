@@ -2027,7 +2027,7 @@ function showRunway(){
     plane.style.transform='rotate('+s.rot+'deg)';
     status.textContent=s.status;
     bar.style.width=s.barW+'%';
-    setTimeout(doStep, T(s.dur));
+    setTimeout(doStep, s.dur);
   }
   doStep();
 }
@@ -2100,7 +2100,6 @@ function showMapExploration(){
   }
   nextMsg();
   setTimeout(runExploration2, 2200);
-  document.getElementById('dev-skip').classList.add('show');
 }
 
 function runExploration2(){
@@ -2110,7 +2109,6 @@ function runExploration2(){
     if(searchTimer)clearTimeout(searchTimer);
     document.getElementById('sb-fill').style.width='100%';
     document.getElementById('sb-text').textContent='✓ Destinație confirmată! Pregătire de decolare...';
-    document.getElementById('dev-skip').classList.remove('show');
     setTimeout(function(){document.getElementById('search-bar').classList.remove('show');},2000);
     map.flyTo([46.77,23.59],12,{duration:3,easeLinearity:0.25});
     setTimeout(function(){
@@ -2123,7 +2121,7 @@ function runExploration2(){
   }
   var s=explorationSteps[exploIdx2++];
   map.flyTo(s.coords,s.zoom,{duration:s.dur,easeLinearity:0.3});
-  setTimeout(runExploration2, T(s.dur*1000+(s.pause||0)+400));
+  setTimeout(runExploration2, s.dur*1000+(s.pause||0+400));
 }
 
 // ── MAP + FLIGHT ──
