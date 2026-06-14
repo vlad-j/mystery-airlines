@@ -765,11 +765,11 @@ body.panel-active #vignette{display:none !important;}
     <div class="instr-body">
       <div class="instr-rule">
         <div class="instr-num">1</div>
-        <div class="instr-text">Ai descoperit <strong>7 cuvinte cheie</strong> în cele 7 integrame. Fiecare cuvânt-cheie descoperit la integrame valorează un anumit număr de Mystery Miles. Cu milele acumulate, poți debloca regiuni de pe hartă.</div>
+        <div class="instr-text">Fiecare cuvânt-cheie descoperit la integrame valorează un anumit număr de Mystery Miles. Cu milele acumulate, poți debloca regiuni de pe hartă.</div>
       </div>
       <div class="instr-rule">
         <div class="instr-num">2</div>
-        <div class="instr-text">Alege <strong>exact 4 cuvinte</strong>. Va trebui să alegi fix 4 cuvinte din cele 7, nici mai mult, nici mai puțin, și să le introduci la pagina boardingpass.</div>
+        <div class="instr-text">Va trebui să alegi fix 4 cuvinte din cele 7, nici mai mult, nici mai puțin, și să le introduci la pagina boardingpass.</div>
       </div>
       <div class="instr-rule">
         <div class="instr-num">3</div>
@@ -1531,8 +1531,8 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r
 
 // ── DATA ──
 var WORD_DATA = [
-  {id:'insula',km:50},{id:'dragon',km:80},{id:'palmier',km:120},
-  {id:'ocean',km:290},{id:'cercul de foc',km:340},{id:'vulcan',km:510},
+  {id:'vacanta',km:50},{id:'insula',km:80},{id:'templu',km:120},
+  {id:'ocean',km:290},{id:'dragon',km:340},{id:'vulcan',km:510},
   {id:'aventura',km:9200}
 ];
 // Zone thresholds mapped to SVG regions
@@ -1840,8 +1840,8 @@ document.getElementById('spin-btn').addEventListener('click',function(){
       var resEl=document.getElementById('spin-result');
       if(spinCount===1){
         resEl.style.color='#c84a4a';
-        resEl.textContent='TRY AGAIN — mai încearcă!';
-        document.getElementById('rl-sub').textContent='Ghinion! Mai încearcă!';
+        resEl.textContent='APROAPE... dar nu chiar!';
+        document.getElementById('rl-sub').textContent='Atât de aproape. O ultimă șansă.';
         setTimeout(function(){btn.disabled=false;}, T(1000));
       } else {
         resEl.style.color='#b8956a';
