@@ -359,6 +359,9 @@ body.panel-active #vignette{display:none !important;}
   transition:background 0.1s;
   user-select:none;
   -webkit-user-select:none;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
 }
 .kb-key:active{background:rgba(184,149,106,0.3);border-color:#b8956a;}
 .kb-key.kb-del{max-width:52px;background:rgba(200,70,70,0.15);border-color:rgba(200,70,70,0.3);color:#c84a4a;font-size:16px;}
@@ -2452,9 +2455,8 @@ window.showKeyboard = function(){
   document.getElementById('custom-keyboard').classList.add('show');
 };
 
-document.getElementById('word-input').addEventListener('click', function(){
-  window.showKeyboard();
-});
+document.getElementById('word-input').addEventListener('click', function(){ window.showKeyboard(); });
+document.getElementById('word-input').addEventListener('touchstart', function(e){ e.preventDefault(); window.showKeyboard(); }, {passive:false});
 
 window.hideKeyboard = function(){
   document.getElementById('custom-keyboard').classList.remove('show');
@@ -2649,8 +2651,8 @@ window.acceptDinner = function(){
     <div class="kb-key" onclick="kbDel()">⌫</div>
   </div>
   <div class="kb-row">
-    <div class="kb-key" style="flex:2;" onclick="kbPress(' ')">SPAȚIU</div>
-    <div class="kb-key" style="flex:2;background:rgba(184,149,106,0.2);border-color:#b8956a;color:#b8956a;" onclick="submitWord()">✓ OK</div>
+    <div class="kb-key" style="flex:3;max-width:none;font-size:11px;letter-spacing:1px;" onclick="kbPress(' ')">SPAȚIU</div>
+    <div class="kb-key" style="flex:2;max-width:none;background:rgba(184,149,106,0.2);border-color:#b8956a;color:#b8956a;font-size:13px;" onclick="submitWord()">✓ OK</div>
   </div>
 </div>
 
