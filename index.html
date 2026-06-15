@@ -1503,8 +1503,11 @@ var flightRoute=[
 var TOTAL_FLIGHT_MS=16.5*60*1000;
 var flightSpeedMult = 1;
 var breakfastShown = false;
+var breakfastMenuTimer = null;
 var cateringShown = false;
 var dinnerShown = false;
+var cateringMenuTimer = null;
+var dinnerMenuTimer = null;
 
 var enteredWords=[],totalKm=0,wordsLeft=4,unlockedZones=[];
 var planeMarker=null, spinCount=0;
@@ -2519,7 +2522,7 @@ function showBreakfastModal(){
     document.getElementById('breakfast-modal').classList.add('show');
   }
   audio.onended = openMenu;
-  setTimeout(openMenu, 120000);
+  breakfastMenuTimer = setTimeout(openMenu, 120000);
 }
 
 window.selectBreakfastItem = function(idx){
@@ -2546,20 +2549,19 @@ window.revealBreakfastBread = function(){
 
 window.acceptBreakfast = function(){
   // Force hide all breakfast-related modals
-  var bm = document.getElementById('breakfast-modal');
-  var bam = document.getElementById('breakfast-audio-modal');
-  var im4 = document.getElementById('ignore-modal-4');
-  bm.classList.remove('show'); bm.style.display = 'none';
-  bam.classList.remove('show'); bam.style.display = 'none';
-  if(im4){ im4.classList.remove('show'); im4.style.display = 'none'; }
+  ['breakfast-modal','breakfast-audio-modal','ignore-modal-4'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el){ el.classList.remove('show'); el.style.display = 'none'; }
+  });
   var audio = document.getElementById('breakfast-audio');
   if(audio){ audio.pause(); audio.currentTime = 0; audio.onended = null; }
+  if(breakfastMenuTimer){ clearTimeout(breakfastMenuTimer); breakfastMenuTimer = null; }
   setTimeout(function(){
-    bm.style.display = '';
-    bam.style.display = '';
-    if(im4) im4.style.display = '';
+    ['breakfast-modal','breakfast-audio-modal','ignore-modal-4'].forEach(function(id){
+      var el = document.getElementById(id); if(el) el.style.display = '';
+    });
     animateLeg(3);
-  }, 400);
+  }, 500);
 };
 
 // ── DINNER ──
@@ -2596,7 +2598,7 @@ function showDinnerModal(){
     document.getElementById('dinner-modal').classList.add('show');
   }
   audio.onended = openMenu;
-  setTimeout(openMenu, 120000);
+  dinnerMenuTimer = setTimeout(openMenu, 120000);
 }
 
 window.selectDinnerItem = function(idx){
@@ -2625,6 +2627,7 @@ window.acceptDinner = function(){
   document.getElementById('dinner-modal').classList.remove('show');
   var audio = document.getElementById('dinner-audio');
   if(audio){ audio.pause(); audio.currentTime = 0; }
+  if(dinnerMenuTimer){ clearTimeout(dinnerMenuTimer); dinnerMenuTimer = null; }
   animateLeg(7);
 };
 
