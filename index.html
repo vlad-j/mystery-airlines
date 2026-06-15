@@ -2625,8 +2625,9 @@ window.revealDinnerBread = function(){
 
 window.acceptDinner = function(){
   document.getElementById('dinner-modal').classList.remove('show');
+  document.getElementById('dinner-audio-modal').classList.remove('show');
   var audio = document.getElementById('dinner-audio');
-  if(audio){ audio.pause(); audio.currentTime = 0; }
+  if(audio){ audio.pause(); audio.currentTime = 0; audio.onended = null; }
   if(dinnerMenuTimer){ clearTimeout(dinnerMenuTimer); dinnerMenuTimer = null; }
   animateLeg(7);
 };
