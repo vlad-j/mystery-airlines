@@ -989,6 +989,7 @@ window.closeIgnoreModal4 = function(){
 window.showIgnoreModal5 = function(){
   var audio = document.getElementById('dinner-audio');
   if(audio){ audio.pause(); }
+  document.getElementById('dinner-audio-modal').classList.remove('show');
   document.getElementById('ignore-modal-5').classList.add('show');
 };
 
@@ -1646,8 +1647,7 @@ var rouletteAngle=0;
 function buildRouletteSegments(){
   // Always 12 segments for visual density - mix of fake destinations + special ones
   var fakeDestinations = [
-    'DUBAI','MALDIVE','MAROC','ISLANDA','MEXIC','GRECIA',
-    'BORA BORA','THAILAND','MALDIVE','JAPONIA'
+    'EMIRATELE ARABE','INDIA','MAROC','ISLANDA','MEXIC','SPANIA','ITALIA','THAILAND','VIETNAM','JAPONIA','MALAEZIA','FILIPINE','SINGAPORE','CUBA','KENYA','ARMENIA','AZERBAIDJAN','UZBEKISTAN','CHINA','COREEA DE SUD','CAMBODGIA','LAOS','AZORE','MADEIRA','PERU'
   ];
   var segs=[];
   // Add fake destinations to fill wheel
@@ -2080,10 +2080,10 @@ var searchMessages = [
   'SE COLECTEAZĂ DATELE...',
   'PRIMA ÎNCERCARE!',
   'NEREUȘIT!',
-  'CE DRACU ARE??',
+  'ÎNCĂ SE CAUTĂ...',
   'AH, GATA!',
   'Se calculează ruta optimă...',
-  'DESTINAȚIE SELECTATĂ!!!',
+  'SE STABILEȘTE DESTINAȚIA...',
 ];
 var searchMsgIdx = 0;
 var searchTimer = null;
