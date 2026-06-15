@@ -2540,9 +2540,12 @@ window.revealBreakfastBread = function(){
 
 window.acceptBreakfast = function(){
   document.getElementById('breakfast-modal').classList.remove('show');
+  document.getElementById('breakfast-audio-modal').classList.remove('show');
+  document.getElementById('ignore-modal-4').classList.remove('show');
   var audio = document.getElementById('breakfast-audio');
-  if(audio){ audio.pause(); audio.currentTime = 0; }
-  animateLeg(3);
+  if(audio){ audio.pause(); audio.currentTime = 0; audio.onended = null; }
+  // Small delay to ensure modal is hidden before continuing
+  setTimeout(function(){ animateLeg(3); }, 300);
 };
 
 // ── DINNER ──
