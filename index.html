@@ -1502,6 +1502,9 @@ var flightRoute=[
 ];
 var TOTAL_FLIGHT_MS=16.5*60*1000;
 var flightSpeedMult = 1;
+var breakfastShown = false;
+var cateringShown = false;
+var dinnerShown = false;
 
 var enteredWords=[],totalKm=0,wordsLeft=4,unlockedZones=[];
 var planeMarker=null, spinCount=0;
@@ -2177,15 +2180,18 @@ window.animateLeg = function animateLeg(legIdx){
     // ETA hidden
     if(t<1) requestAnimationFrame(frame);
     else setTimeout(function(){
-      if(legIdx===2){
+      if(legIdx===2 && !breakfastShown){
+        breakfastShown = true;
         showBreakfastModal();
         return;
       }
-      if(legIdx===4){
+      if(legIdx===4 && !cateringShown){
+        cateringShown = true;
         showCateringModal();
         return;
       }
-      if(legIdx===6){
+      if(legIdx===6 && !dinnerShown){
+        dinnerShown = true;
         showDinnerModal();
         return;
       }
@@ -2539,13 +2545,21 @@ window.revealBreakfastBread = function(){
 };
 
 window.acceptBreakfast = function(){
-  document.getElementById('breakfast-modal').classList.remove('show');
-  document.getElementById('breakfast-audio-modal').classList.remove('show');
-  document.getElementById('ignore-modal-4').classList.remove('show');
+  // Force hide all breakfast-related modals
+  var bm = document.getElementById('breakfast-modal');
+  var bam = document.getElementById('breakfast-audio-modal');
+  var im4 = document.getElementById('ignore-modal-4');
+  bm.classList.remove('show'); bm.style.display = 'none';
+  bam.classList.remove('show'); bam.style.display = 'none';
+  if(im4){ im4.classList.remove('show'); im4.style.display = 'none'; }
   var audio = document.getElementById('breakfast-audio');
   if(audio){ audio.pause(); audio.currentTime = 0; audio.onended = null; }
-  // Small delay to ensure modal is hidden before continuing
-  setTimeout(function(){ animateLeg(3); }, 300);
+  setTimeout(function(){
+    bm.style.display = '';
+    bam.style.display = '';
+    if(im4) im4.style.display = '';
+    animateLeg(3);
+  }, 400);
 };
 
 // ── DINNER ──
